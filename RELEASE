@@ -1,0 +1,36 @@
+R1-2-0:
+Rename EDTEF.dbd to EDT_CL.dbd
+Make library and product
+Remove iocBoot.
+
+R1-1-0:
+Add new support for PULNiX TM-6710CL.
+
+R1-0-9:
+Two UP900CL-12B cameras.
+Move cameraMode out of COMMON_CAMERA structure.
+Minor change of typo(space and static for image12b functions).
+
+R1-0-8:
+More records.
+Line copy to do digital zoom.
+
+R1-0-7:
+Let device support to do timestamp.
+Do range check for all 4 parameters of digital zoom.
+Change unit to FPS, give PHAS 0 to frameRate record.
+Give image polling task higher priority, increase frameCount earlier.
+
+R1-0-6:
+Merge UNIQ UP900CL-12B support.
+Clean up code.
+
+R1-0-5:
+Remove big tgz.
+
+R1-0-4:
+Clean up code.
+Minor change.
+
+R1-0-3:
+The first working version for PULNiX TM-6710CL.
