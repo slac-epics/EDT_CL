@@ -18,7 +18,7 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 #SNCSEQ=$(EPICS_BASE)/../modules/soft/seq
 
 # EPICS_BASE usually appears last so other apps can override stuff:
-EPICS_BASE=/afs/slac/g/lcls/epics/base
+include $(TOP)/../../configure/RELEASE-base
 
 #Capfast users may need the following definitions
 #CAPFAST_TEMPLATES=

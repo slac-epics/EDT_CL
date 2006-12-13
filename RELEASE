@@ -1,3 +1,6 @@
+R1-2-1:
+Change camera640480.db and camera13921040.db to fit naming convention.
+
 R1-2-0:
 Rename EDTEF.dbd to EDT_CL.dbd
 Make library and product
