@@ -156,6 +156,8 @@ record(ao, "$(user):CTRD_V_BOOK")
 record(ao, "$(user):NOISE_RATIO")
 {
   field(DESC, "Noise Ratio")
+  field(DTYP, "EDTCL_PTM6710")
+  field(OUT,  "@$(CAMERA):NoiseRatio")
   field(EGU,  "")
   field(PREC, "3")
   field(DOL,  "0.1")
