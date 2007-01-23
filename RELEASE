@@ -1,3 +1,7 @@
+R1-2-2:
+Fix the bug in camera640480.db for NoiseRatio.
+Minor change to configure/RELEASE.
+
 R1-2-1:
 Change camera640480.db and camera13921040.db to fit naming convention.
 
