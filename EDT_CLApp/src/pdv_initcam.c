@@ -1035,9 +1035,6 @@ fname_from_path(char *fname, char *pathstr)
 int
 serial_init(EdtDev * edt_p, Dependent * dd_p)
 {
-    char   *p;
-    char   *nextp;
-    int     len;
     int     ret;
     int     foi = 0;
     int     hamamatsu = 0;
@@ -1046,19 +1043,19 @@ serial_init(EdtDev * edt_p, Dependent * dd_p)
     char    resp[257];
 
     if (dd_p->serial_format == SERIAL_BINARY)
-	return serial_init_binary(edt_p, dd_p);
+        return serial_init_binary(edt_p, dd_p);
 
     else if (dd_p->serial_format == SERIAL_BASLER_FRAMING)
-	return serial_init_basler_binary(edt_p, dd_p);
+        return serial_init_basler_binary(edt_p, dd_p);
 
     else if (dd_p->serial_format == SERIAL_DUNCAN_FRAMING)
-	return serial_init_duncan_binary(edt_p, dd_p);
+        return serial_init_duncan_binary(edt_p, dd_p);
 
     if (edt_p->devid == PDVFOI_ID)
-	foi = 1;
+        foi = 1;
 
     if (grepit(dd_p->cameratype, "Hamamatsu") != NULL)
-	hamamatsu = 1;
+        hamamatsu = 1;
 
     /* first flush any pending/garbage serial */
     resp[0] = '\0';
@@ -1070,7 +1067,7 @@ serial_init(EdtDev * edt_p, Dependent * dd_p)
      * back before it's really done, so...
      */
     if (hamamatsu)
-	propeller_sleep(5);
+        propeller_sleep(5);
 
     edt_msg(DEBUG1, "sending serial init commands to camera....\n");
 
@@ -1080,107 +1077,115 @@ serial_init(EdtDev * edt_p, Dependent * dd_p)
      */
     if (pdv_is_kodak_i(edt_p))
     {
-	/* first send a couple of TRM?s to flush and sync */
-	pdv_serial_command(edt_p, "TRM?");
-	pdv_serial_wait(edt_p, 500, 40);
-	pdv_serial_command(edt_p, "TRM?");
-	pdv_serial_wait(edt_p, 500, 40);
-	ret = pdv_serial_read(edt_p, resp, 256);
+        /* first send a couple of TRM?s to flush and sync */
+        pdv_serial_command(edt_p, "TRM?");
+        pdv_serial_wait(edt_p, 500, 40);
+        pdv_serial_command(edt_p, "TRM?");
+        pdv_serial_wait(edt_p, 500, 40);
+        ret = pdv_serial_read(edt_p, resp, 256);
 
-	pdv_serial_command(edt_p, "IDN?");
-	edt_msg(DEBUG1, "IDN? ");
-	pdv_serial_wait(edt_p, 1000, 60);
-	ret = pdv_serial_read(edt_p, resp, 256);
-	if (ret > 20)
-	    edt_msg(DEBUG1, "%s\n", resp);
-	else if (ret > 0)
-	    edt_msg(DEBUG1, "%s (unexpected response!)\n", resp);
-	else
-	{
-	    edt_msg(DEBUG1, "<no response from camera -- check cables and connections>\n");
-	    skip_init = 1;
-	}
+        pdv_serial_command(edt_p, "IDN?");
+        edt_msg(DEBUG1, "IDN? ");
+        pdv_serial_wait(edt_p, 1000, 60);
+        ret = pdv_serial_read(edt_p, resp, 256);
+        if (ret > 20)
+            edt_msg(DEBUG1, "%s\n", resp);
+        else if (ret > 0)
+            edt_msg(DEBUG1, "%s (unexpected response!)\n", resp);
+        else
+        {
+            edt_msg(DEBUG1, "<no response from camera -- check cables and connections>\n");
+            skip_init = 1;
+        }
     }
 
 
     if (!skip_init)
     {
-	/*
-	 * send serial init string
-	 */
-	p = dd_p->serial_init;
-	while ((nextp = strchr(p, ':')))
-	{
-	    /* int     just_dots = 1; */ /* unused */
-	    int     ms;
+        int    i = 0, just_dots = 1, ms;
+        char   *lastp = NULL;
+        char   *p = dd_p->serial_init;
 
-	    if (dd_p->serial_init_delay == NOT_SET)
-		ms = 500;
-	    else ms = dd_p->serial_init_delay;
+        if (dd_p->serial_init_delay == NOT_SET)
+            ms = 500;
+        else ms = dd_p->serial_init_delay;
 
-	    len = nextp - p;
-	    if (len > 31)
-	    {
-		edt_msg(PDVLIB_MSG_FATAL, "ERROR: serial command too long\n");
-		return -1;
-	    }
+        /*
+         * send serial init string
+         */
+        cmdstr[0] = '\0';
+        while (*p)
+        {
+            if (i > 31)
+            {
+                edt_msg(PDVLIB_MSG_FATAL, "ERROR: serial command too long\n");
+                return -1;
+            }
+            if (*p == ':' && lastp && *lastp != '\\')
+            {
+                cmdstr[i] = '\0';
+                i = 0;
 
-	    strncpy(cmdstr, p, len);
-	    cmdstr[len] = 0;
-	    memset(resp, '\0', 257);
+                memset(resp, '\0', 257);
 
-	    if (is_hex_byte_command(cmdstr))
-	    {
-		if (dd_p->serial_init_delay == NOT_SET)
-		    ms = 10;
-		edt_msg(DEBUG2, "%s\n", cmdstr);
-		pdv_serial_command_hex(edt_p, cmdstr, 1);
+                if (cmdstr[0])
+                {
+                    if (is_hex_byte_command(cmdstr))
+                    {
+                        if (dd_p->serial_init_delay == NOT_SET)
+                            ms = 10;
+                        edt_msg(DEBUG2, "%s\n", cmdstr);
+                        pdv_serial_command_hex(edt_p, cmdstr, 1);
 
-		/* flush out junk */
-		if (foi)
-		    ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 0);
-		else
-		    ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 128);
-		pdv_serial_read(edt_p, resp, ret);
-	    }
-	    else if (hamamatsu && !foi)
-	    {
-		char   *resp_str;
+                        /* flush out junk */
+                        if (foi)
+                            ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 0);
+                        else
+                            ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 128);
+                        pdv_serial_read(edt_p, resp, ret);
+                    }
+                    else if (hamamatsu && !foi)
+                    {
+                        char   *resp_str;
 
-		edt_msg(DEBUG2, "%s", strip_crlf(cmdstr));
-		fflush(stdout);
-		resp_str = serial_tx_rx(edt_p, cmdstr, 0);
-		edt_msg(DEBUG2, " <%s>\n", strip_crlf(resp_str));
-	    }
-	    else			/* FUTURE: expand and test serial_tx_rx under
-				     * FOI and replace
-				     * pdv_serial_command/wait/read with that for
-				     * all */
-	    {
-		edt_msg(DEBUG1, ".", cmdstr);
-		edt_msg(DEBUG2, "%s ", cmdstr);
-		pdv_serial_command(edt_p, cmdstr);
+                        edt_msg(DEBUG2, "%s", strip_crlf(cmdstr));
+                        fflush(stdout);
+                        resp_str = serial_tx_rx(edt_p, cmdstr, 0);
+                        edt_msg(DEBUG2, " <%s>\n", strip_crlf(resp_str));
+                    }
+                    else                        /* FUTURE: expand and test serial_tx_rx under
+                                             * FOI and replace
+                                             * pdv_serial_command/wait/read with that for
+                                             * all */
+                    {
+                        /* edt_msg(DEBUG1, ".", cmdstr); */
+                        edt_msg(DEBUG2, "%s ", cmdstr);
+                        pdv_serial_command(edt_p, cmdstr);
 
-		if (foi)
-		    ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 0);
-		else
-		    ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 16);
-		pdv_serial_read(edt_p, resp, 256);
-		edt_msg(DEBUG2, " <%s>", strip_crlf(resp));
-		edt_msg(DEBUG2, "\n");
-	    }
-	    edt_msg(DEBUG1, ".", cmdstr);
-
-	    p = nextp + 1;
-	    edt_msleep(ms);
-	}
+                        if (foi)
+                            ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 0);
+                        else
+                            ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 16);
+                        pdv_serial_read(edt_p, resp, 256);
+                        edt_msg(DEBUG2, " <%s>", strip_crlf(resp));
+                        edt_msg(DEBUG2, "\n");
+                    }
+                    /* edt_msg(DEBUG1, ".", cmdstr); */
+                    edt_msleep(ms);
+                }
+            }
+            else if (*p != '\\')
+                cmdstr[i++] = *p;
+            lastp = p;
+            ++p;
+        }
     }
 
     pdv_update_values_from_camera(edt_p);
     edt_set_dependent(edt_p, dd_p);
 
     if (hamamatsu)
-	propeller_sleep(5);
+        propeller_sleep(5);
 
     return 0;
 }
