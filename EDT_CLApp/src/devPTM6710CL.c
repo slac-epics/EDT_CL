@@ -47,8 +47,8 @@ int PTM6710CL_DEV_DEBUG = 1;
 /* some constants about JAI PULNiX TM-6710CL camera */
 
 #define CAMERA_MODEL_NAME "PTM6710CL"
-#define CAMERA_CONT_CONFIG_NAME "ptm6710cl.cfg"	/* Free-Run configuration */
-#define CAMERA_PW_CONFIG_NAME "ptm6710cl.cfg"	/* External trigger with pulse width control mode */
+#define CAMERA_CONT_CONFIG_NAME "ptm6710cl.cfg"		/* Free-Run configuration */
+#define CAMERA_PW_CONFIG_NAME "ptm6710cl_pw.cfg"	/* External trigger with pulse width control mode */
 
 #if 0	/* We don't hardcode here, since cfg file might use different */
 #define	NUM_OF_COL	640

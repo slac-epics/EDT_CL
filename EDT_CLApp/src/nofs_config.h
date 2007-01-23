@@ -10,12 +10,17 @@
 char *ptm6710cl_cfg[] =
 #include "ptm6710cl.cfg.h"
 
+char *ptm6710cl_pw_cfg[] =
+#include "ptm6710cl_pw.cfg.h"
+
 char *up900cl12b_cfg[] =
 #include "up900cl12b.cfg.h"
 
 #define MAPCONFIG(cf, vx_p) \
      if (strcmp(cf, "ptm6710cl") == 0) \
         vx_p = ptm6710cl_cfg ; \
+     else if (strcmp(cf, "ptm6710cl_pw") == 0) \
+        vx_p = ptm6710cl_pw_cfg ; \
      else if (strcmp(cf, "up900cl12b") == 0) \
         vx_p = up900cl12b_cfg ; \
     else vx_p = NULL ;
