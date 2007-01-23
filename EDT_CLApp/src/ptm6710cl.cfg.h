@@ -16,7 +16,7 @@
     "method_interlace: BYTE_INTLV",
     "CL_DATA_PATH_NORM: 17",
     "MODE_CNTL_NORM:    00",
-    /*"serial_init \":SA9\r\""*/
+    /*"serial_init: \"\\:SA9\r\""*/
     "vtaps: 2",
     "CL_CFG_NORM: 02",
     "hskip: 0",
