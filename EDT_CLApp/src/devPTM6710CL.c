@@ -265,7 +265,7 @@ static int PTM6710CL_Poll(PTM6710CL_CAMERA * pCamera)
 
     while(TRUE)
     {
-        epicsThreadSleep(0.1);
+        if(!pCamera->cameraMode) epicsThreadSleep(0.1);
         /* waiting for new frame */
         pNewFrame = (unsigned char *)pdv_wait_image(pCamera->pCameraHandle);
 
