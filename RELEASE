@@ -1,3 +1,7 @@
+R1-3-0:
+Address cfgname changed issue, copy name in readcfg.
+debug info.
+
 R1-2-3:
 Add PULNiX TM6710CL Pulse Width Mode support.
 Debug serial port support.
