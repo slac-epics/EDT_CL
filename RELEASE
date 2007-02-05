@@ -1,3 +1,7 @@
+R1-2-3:
+Add PULNiX TM6710CL Pulse Width Mode support.
+Debug serial port support.
+
 R1-2-2:
 Fix the bug in camera640480.db for NoiseRatio.
 Minor change to configure/RELEASE.
