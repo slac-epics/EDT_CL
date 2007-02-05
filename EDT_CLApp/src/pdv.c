@@ -387,6 +387,8 @@ EDTPRINTF(edt_p,1,("write  unit %d <%s>\n",unit,dbgbuf)) ;
                PDV_EN_TX_INT | PDV_EN_TX
                | PDV_EN_RX | PDV_EN_RX_INT | PDV_EN_DEV_INT);
         edt_or(edt_p, EDT_DMA_INTCFG, EDT_RMT_EN_INTR | EDT_PCI_EN_INTR);
+        if(EDT_DRV_DEBUG>1)
+            errlogPrintf("PDV_SERIAL_DATA_CNTL %x, BRATE %x, EDT_DMA_INTCFG %x\n", edt_get(edt_p,PDV_SERIAL_DATA_CNTL),  edt_get(edt_p, PDV_BRATE),  edt_get(edt_p,EDT_DMA_INTCFG));
     }
 }
 
@@ -408,12 +410,12 @@ pdvdrv_serial_read(Edt_Dev * edt_p, char *buf, int size, int unit)
         }
     if (unit > EDT_MAXSERIAL) read_p = &edt_p->m_serial_p[0] ;
 
+    if(EDT_DRV_DEBUG>1)
+    {
+        errlogPrintf("read unit %d size %d count %d doingm %d consumer %d\n",unit, size, read_p->m_Rd_count, ser_p->m_DoingM, read_p->m_Rd_consumer);
+        epicsThreadSleep(1);
+    }
 
-        EDTPRINTF(edt_p,1,( "read unit %d size %d count %d doingm %d consumer %d\n",
-                     unit,
-                    size,
-                   read_p->m_Rd_count, ser_p->m_DoingM,
-                   read_p->m_Rd_consumer));
     if (read_p->m_Rd_count && !ser_p->m_DoingM)
     {
         for (i = 0; i < size; i++)
@@ -501,6 +503,11 @@ pdvdrv_serial_wait(Edt_Dev * edt_p, int mwait, int count)
     {
         read_p->m_Rd_wait = count;
         retval = edt_wait_serial(edt_p, mwait);
+        if(EDT_DRV_DEBUG>1)
+        {
+            errlogPrintf("serial wait return %d, read count %d\n", retval, read_p->m_Rd_count);
+            epicsThreadSleep(1);
+        }
         read_p->m_Rd_wait = 0;
 
     }
