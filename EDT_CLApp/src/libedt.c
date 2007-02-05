@@ -371,7 +371,7 @@ int edt_configure_ring_buffer(EdtDev * edt_p, int index, int bufsize, int write_
     sysargs.writeflag = write_flag;
     sysargs.addr = (uint_t) pdata;
     sysargs.size = bufsize;
-    errlogPrintf("edt_configure_ring_buffer %p %d %d",pdata,sysargs.addr,sysargs.size);
+    if(EDT_DRV_DEBUG>1) errlogPrintf("edt_configure_ring_buffer %p %d %d",pdata,sysargs.addr,sysargs.size);
     bzero(sysargs.addr,sysargs.size) ;
 
     if (edt_ioctl(edt_p, EDTS_BUF, &sysargs) == 0)
