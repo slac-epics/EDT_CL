@@ -8,6 +8,7 @@
  */
 
 #include "edtinc.h"
+#include "epicsString.h"
 #include "myinitcam.h"
 extern int EDT_DRV_DEBUG;
 #define COMPARE(str1, str2) (strcasecmp(str1, str2) == 0)
@@ -75,7 +76,7 @@ char * get_next_string(int nofs_cfg, FILE *cfg_fp, char *ss, char *ds)
 
 static char *dmy_cfg[] = {""};
 
-int readcfg(char *cfgfile, Dependent * dd_p, Edtinfo * ei_p, int nofs_cfg)
+int readcfg(char *cfgfilename, Dependent * dd_p, Edtinfo * ei_p, int nofs_cfg)
 {
 
     int     i;
@@ -86,12 +87,14 @@ int readcfg(char *cfgfile, Dependent * dd_p, Edtinfo * ei_p, int nofs_cfg)
     char    s[256];
     char    *sp;
     int     lineno = 0;
+    char *  cfgfile = NULL;
 #ifdef NO_FS
     char    *cf;
 #endif
 
     if(EDT_DRV_DEBUG) printf("Reading/processing config file %s:\n\n", cfgfile);
 
+    cfgfile=epicsStrDup(cfgfilename);
     if (!nofs_cfg)
     {
 	/*
