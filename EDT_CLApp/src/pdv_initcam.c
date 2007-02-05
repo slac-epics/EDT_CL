@@ -1165,8 +1165,24 @@ serial_init(EdtDev * edt_p, Dependent * dd_p)
                         if (foi)
                             ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 0);
                         else
-                            ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 16);
+                            /*ret = pdv_serial_wait(edt_p, dd_p->serial_timeout, 16);*/
+                            epicsThreadSleep(1);
+
                         pdv_serial_read(edt_p, resp, 256);
+
+                        if(resp[1] == 0x06) 
+                        {/* 0x06 is ACK, 0x15 is NAK */
+                            printf("Command OK!\n");
+                            if(strstr(resp, "RR"))
+                            {
+                                int xxloop=2;
+                                while(resp[xxloop]!='\r') printf("0x%c%c ", resp[xxloop++], resp[xxloop++]);
+                                printf("\n");
+                            }
+                        }
+                        else
+                            printf("Command Failed!\n");
+
                         edt_msg(DEBUG2, " <%s>", strip_crlf(resp));
                         edt_msg(DEBUG2, "\n");
                     }
