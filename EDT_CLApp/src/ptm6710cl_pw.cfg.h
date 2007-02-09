@@ -18,6 +18,7 @@
     "MODE_CNTL_NORM:    a0",
     /*"serial_init: \"\\:RR\""*/
     /*"serial_init: \"\\:SA9:\\:O1:\\:C0:\\:WP1:\\:RR\""*/
+    /*"serial_init: \"\\:SA9:\\:O1:\\:WP1:\\:RR\""*/
     "vtaps: 2",
     "CL_CFG_NORM: 02",
     "hskip: 0",
