@@ -318,7 +318,10 @@ static int PTM6710CL_Start(PTM6710CL_CAMERA * pCamera)
     }
 
     if(pCamera->cameraMode)
+    {
         pdv_enable_external_trigger(pCamera->pCameraHandle, PDV_PHOTO_TRIGGER);
+        edt_reg_or(pCamera->pCameraHandle, PDV_UTIL2, PDV_MC4);
+    }
 
     pdv_start_images(pCamera->pCameraHandle, 0);
 
