@@ -9,9 +9,10 @@ unsigned char * pimage;
 
 extern int initcam(int unit, int channel, char * cfgname);
 
-char * config_name="ptm6710cl.cfg";
+char * config_name_freerun="ptm6710cl.cfg";
+char * config_name_pw="ptm6710cl_pw.cfg";
 /*============================================*/
-int do_speed_test(int unit, int channel)
+int do_speed_test(int unit, int channel, int mode)
 {
 	int err;
 	PdvDev* h=0;
@@ -31,14 +32,17 @@ int do_speed_test(int unit, int channel)
 
 	edtInstall(unit);
 	/* set up test for cameralink or dvk for example to customer */
-	printf("initcam(%d, %d, %s)\n",unit, channel, config_name);
-	initcam(unit,channel,config_name);
+	printf("initcam(%d, %d, %s)\n",unit, channel, mode?config_name_pw:config_name_freerun);
+	if(mode)
+            initcam(unit,channel,config_name_pw);
+        else
+            initcam(unit,channel,config_name_freerun);
 	h=pdv_open_channel("pdv",unit,channel);
         if (h==0) return printf("pdv_open_channel() failed\n");
         else printf("pdv_open_channel() succeesed\n");
 
         pdv_set_timeout(h,0);
-        pdv_enable_external_trigger(h, PDV_PHOTO_TRIGGER); /* this is only needed for external trigger mode */
+        if(mode) pdv_enable_external_trigger(h, PDV_PHOTO_TRIGGER); /* this is only needed for external trigger mode */
 
 	dma_size=pdv_get_dmasize(h);
 	image_size=pdv_get_imagesize(h);
@@ -80,7 +84,7 @@ int do_speed_test(int unit, int channel)
 	return(0);
 }
 
-int do_speed_both(int dmy)
+int do_speed_both(int dmy, int mode)
 {
 	int err;
 	PdvDev* h=0;
@@ -100,9 +104,9 @@ int do_speed_both(int dmy)
 
 	edtInstall(unit);
 
-	sprintf(initcam_command,"-u %i -c 2 -f %s",unit,config_name);
+	sprintf(initcam_command,"-u %i -c 2 -f %s",unit,mode?config_name_pw:config_name_freerun);
 	printf("initcam(%s)\n",initcam_command);
-	initcam(unit,2,config_name);
+	initcam(unit,2,mode?config_name_pw:config_name_freerun);
 	h=pdv_open_channel("pdv",unit,2); if (h==0) return printf("pdv_open_channel() failed\n");
 	pdv_set_timeout(h,0);
 
@@ -118,9 +122,9 @@ int do_speed_both(int dmy)
 	unit = 1 ;
 	edtInstall(unit);
 
-	sprintf(initcam_command,"-u %i -c 2 -f %s",unit,config_name);
+	sprintf(initcam_command,"-u %i -c 2 -f %s",unit,mode?config_name_pw:config_name_freerun);
 	printf("initcam(%s)\n",initcam_command);
-	initcam(unit,2,config_name);
+	initcam(unit,2,mode?config_name_pw:config_name_freerun);
 	h2=pdv_open_channel("pdv",unit,2); if (h==0) return printf("pdv_open_channel() failed\n");
 	pdv_set_timeout(h2,0);
 
