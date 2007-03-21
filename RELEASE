@@ -2,19 +2,19 @@ R1-3-1:
 fix pulse width mode bug for PTM6710CL
 support speed test for both freerun and pulse width mode
 
-R1-3-0:
+EDT_CL-1-3-0:
 Address cfgname changed issue, copy name in readcfg.
 debug info.
 
-R1-2-3:
+EDT_CL-1-2-3:
 Add PULNiX TM6710CL Pulse Width Mode support.
 Debug serial port support.
 
-R1-2-2:
+EDT_CL-1-2-2:
 Fix the bug in camera640480.db for NoiseRatio.
 Minor change to configure/RELEASE.
 
-R1-2-1:
+EDT_CL-1-2-1:
 Change camera640480.db and camera13921040.db to fit naming convention.
 
 R1-2-0:
