@@ -1,3 +1,7 @@
+R1-3-1:
+fix pulse width mode bug for PTM6710CL
+support speed test for both freerun and pulse width mode
+
 R1-3-0:
 Address cfgname changed issue, copy name in readcfg.
 debug info.
