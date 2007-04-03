@@ -1,7 +1,7 @@
 record(ai, "$(user):RESOLUTION") {
   field(DESC, "resolution")
   field(PINI, "YES")
-  field(VAL, "4.65")
+  field(VAL, "$(RESOLUTION)")
   field(EGU,  "um")
   field(PREC, "3")
 }
@@ -160,7 +160,7 @@ record(waveform, "$(user):BUFD_IMG") {
 record(bi, "$(user):X_ORIENT")
 {
   field(DESC, "Image X Orient")
-  field(VAL,  "0")
+  field(VAL,  "$(XORIENT)")
   field(PINI, "YES")
   field(ZNAM, "Positive")
   field(ONAM, "Negative")
@@ -169,48 +169,9 @@ record(bi, "$(user):X_ORIENT")
 record(bi, "$(user):Y_ORIENT")
 {
   field(DESC, "Image Y Orient")
-  field(VAL,  "0")
+  field(VAL,  "$(YORIENT)")
   field(PINI, "YES")
   field(ZNAM, "Positive")
   field(ONAM, "Negative")
-}
-
-record(bo, "$(user):PNEUMATIC")
-{
-  field(DESC, "pneumatic solenoid")
-  field(DOL,  "0")
-  field(PINI, "YES")
-  field(ZNAM, "OUT")
-  field(ONAM, "IN")
-  field(FLNK, "$(user):IN_LMTSW")
-}
-
-record(bi, "$(user):IN_LMTSW")
-{
-  field(DESC, "In limit sw")
-  field(VAL,  "0")
-  field(PINI, "YES")
-  field(ZNAM, "Inactive")
-  field(ONAM, "Active")
-  field(INP,  "$(user):PNEUMATIC")
-  field(FLNK, "$(user):CALC_LMTSW")
-}
-
-record(calc, "$(user):CALC_LMTSW")
-{
-  field(PINI, "YES")
-  field(INPA, "$(user):IN_LMTSW")
-  field(CALC, "1-A")
-  field(FLNK, "$(user):OUT_LMTSW")
-}
-
-record(bi, "$(user):OUT_LMTSW")
-{
-  field(DESC, "Out limit sw")
-  field(VAL,  "0")
-  field(PINI, "YES")
-  field(ZNAM, "Inactive")
-  field(ONAM, "Active")
-  field(INP,  "$(user):CALC_LMTSW")
 }
 
