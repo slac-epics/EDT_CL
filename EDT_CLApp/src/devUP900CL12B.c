@@ -67,7 +67,7 @@ int UP900CL12B_DEV_DEBUG = 1;
 #ifdef vxWorks
 #define CAMERA_THREAD_PRIORITY	(10)
 #else
-#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityMax)
+#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityMedium)
 #endif
 #define CAMERA_THREAD_STACK	(0x20000)
 
@@ -146,6 +146,8 @@ static int image12b_noise_reduce(unsigned char * image, int image_size, float th
 static int image12b_projection_calc(const unsigned char * image, int * proj_H, int num_col, int * proj_V, int num_row);
 static int image12b_centroid_calc(int * proj_H, int num_col, int * proj_V, int num_row, double * cen_H, double * cen_V);
 
+unsigned int UP900_SHIFT_4BITS = 0;
+
 static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 {
     int loop, saveImage;
@@ -182,9 +184,12 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 
         memcpy((void*)(pImageBuf->pImage), (void*)pNewFrame, pCamera->imageSize);
         /*swab( (void*)pNewFrame, (void*)(pImageBuf->pImage), pCamera->imageSize/sizeof(unsigned short int) );*/
-#if 1
-        for(loop=0; loop<pCamera->numOfCol * pCamera->numOfRow; loop++) pImageBuf->pImage[loop] >>= 4;
-#endif
+
+        if(UP900_SHIFT_4BITS > 0)
+        {
+            for(loop=0; loop<pCamera->numOfCol * pCamera->numOfRow; loop++) pImageBuf->pImage[loop] >>= 4;
+        }
+
         /* Calculate projiection, FWHM, centroid ... */
 
         if(saveImage)
