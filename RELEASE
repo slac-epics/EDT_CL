@@ -2,6 +2,7 @@ R1-3-2:
 Change the image polling thread priority, add shift switch for UP900 camera
 Remove pneumatic simulation record for UP900 camera
 Add more macro for camera13921140.db
+Add more PVs to hold center position
 
 R1-3-1:
 fix pulse width mode bug for PTM6710CL
