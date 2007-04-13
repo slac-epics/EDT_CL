@@ -201,13 +201,13 @@ record(ai, "$(user):Y_AM_CTR") {
 
 record(ai, "$(user):X_RTCL_CTR") {
   field(DESC, "X reticle center")
-  field(EGU,  "mm")
-  field(PREC, "5")
+  field(EGU,  "pixels")
+  field(PREC, "2")
 }
 
 record(ai, "$(user):Y_RTCL_CTR") {
   field(DESC, "Y reticle center")
-  field(EGU,  "mm")
-  field(PREC, "5")
+  field(EGU,  "pixels")
+  field(PREC, "2")
 }
 
