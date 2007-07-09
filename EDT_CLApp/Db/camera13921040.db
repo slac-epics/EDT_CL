@@ -206,6 +206,7 @@ record(ai, "$(user):Y_AM_CTR") {
 record(ai, "$(user):X_RTCL_CTR") {
   field(DESC, "X reticle center")
   field(VAL, "$(X_RTCL_CTR)")
+  field(PINI, "YES")
   field(EGU,  "pixels")
   field(PREC, "2")
 }
@@ -213,6 +214,7 @@ record(ai, "$(user):X_RTCL_CTR") {
 record(ai, "$(user):Y_RTCL_CTR") {
   field(DESC, "Y reticle center")
   field(VAL, "$(Y_RTCL_CTR)")
+  field(PINI, "YES")
   field(EGU,  "pixels")
   field(PREC, "2")
 }
