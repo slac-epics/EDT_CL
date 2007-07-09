@@ -1,3 +1,6 @@
+EDT_CL-R1-3-3:
+Add macros for profile monitor centers
+
 R1-3-2:
 Change the image polling thread priority, add shift switch for UP900 camera
 Remove pneumatic simulation record for UP900 camera
