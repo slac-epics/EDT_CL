@@ -177,36 +177,42 @@ record(bi, "$(user):Y_ORIENT")
 
 record(ai, "$(user):X_BM_CTR") {
   field(DESC, "X beam center")
+  field(VAL, "$(X_BM_CTR)")
   field(EGU,  "mm")
   field(PREC, "5")
 }
 
 record(ai, "$(user):Y_BM_CTR") {
   field(DESC, "Y beam center")
+  field(VAL, "$(Y_BM_CTR)")
   field(EGU,  "mm")
   field(PREC, "5")
 }
 
 record(ai, "$(user):X_AM_CTR") {
   field(DESC, "X alignment center")
+  field(VAL, "$(X_AM_CTR)")
   field(EGU,  "mm")
   field(PREC, "5")
 }
 
 record(ai, "$(user):Y_AM_CTR") {
   field(DESC, "Y alignment center")
+  field(VAL, "$(Y_AM_CTR)")
   field(EGU,  "mm")
   field(PREC, "5")
 }
 
 record(ai, "$(user):X_RTCL_CTR") {
   field(DESC, "X reticle center")
+  field(VAL, "$(X_RTCL_CTR)")
   field(EGU,  "pixels")
   field(PREC, "2")
 }
 
 record(ai, "$(user):Y_RTCL_CTR") {
   field(DESC, "Y reticle center")
+  field(VAL, "$(Y_RTCL_CTR)")
   field(EGU,  "pixels")
   field(PREC, "2")
 }
