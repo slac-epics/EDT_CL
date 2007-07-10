@@ -6,12 +6,36 @@ record(ai, "$(user):RESOLUTION") {
   field(PREC, "3")
 }
 
+record(bi, "$(user):SPLTIMG")
+{
+  field(DESC, "Splitted Image?")
+  field(DTYP, "EDTCL_PTM6710")
+  field(INP,  "@$(CAMERA):CurSpltImg")
+  field(SCAN, ".1 second")
+  field(TSE,  "-2")
+  field(ZNAM, "Image OK")
+  field(ONAM, "Image Splitted")
+  field(OSV,  "MAJOR")
+  field(FLNK, "$(user):DARKIMG")
+}
+
+record(bi, "$(user):DARKIMG")
+{
+  field(DESC, "Dark Image?")
+  field(DTYP, "EDTCL_PTM6710")
+  field(INP,  "@$(CAMERA):CurDarkImg")
+  field(TSE,  "-2")
+  field(ZNAM, "Image OK")
+  field(ONAM, "Dark Image")
+  field(OSV,  "MAJOR")
+  field(FLNK, "$(user):CTRD_H")
+}
+
 record(ai, "$(user):CTRD_H")
 {
   field(DESC, "Centroid Horizontal")
   field(DTYP, "EDTCL_PTM6710")
   field(INP,  "@$(CAMERA):CurCtrdX")
-  field(SCAN, ".1 second")
   field(EGU,  "mm")
   field(TSE,  "-2")
   field(PREC, "3")
@@ -272,6 +296,16 @@ record(waveform, "$(user):BUFD_IMG") {
   field(FTVL, "UCHAR")
   field(NELM, "307200")
   field(EGU,  "units")
+  field(FLNK, "$(user):BUFD_SPLTIMG")
+}
+
+record(bi, "$(user):BUFD_SPLTIMG")
+{
+  field(DESC, "Splitted Image?")
+  field(DTYP, "EDTCL_PTM6710")
+  field(INP,  "@$(CAMERA):HisSpltImg")
+  field(TSE,  "-2")
+  field(OSV,  "MAJOR")
   field(FLNK, "$(user):BUFD_PROJ_H")
 }
 

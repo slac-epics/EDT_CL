@@ -30,6 +30,7 @@
 
 #include <aiRecord.h>
 #include <aoRecord.h>
+#include <biRecord.h>
 #include <boRecord.h>
 #include <longinRecord.h>
 #include <longoutRecord.h>
@@ -93,6 +94,8 @@ typedef struct IMAGE_BUF
     double		fwhmY;		/* The unit is millimeter */
     double		centroidX;	/* The unit is millimeter */
     double		centroidY;	/* The unit is millimeter */
+
+    int			splittedImage;	/* Image is splitted, or else the first pixel before noise reduction must be 0 */
     /* We might add ROI info here when we support HW ROI */
 } IMAGE_BUF;
 
@@ -193,11 +196,20 @@ static int image8b_process(IMAGE_BUF * pImageBuf, PTM6710CL_CAMERA * pCamera)
     int max_proj;
     int min_proj;
 
+    int sumRow0=0;
+
     if(!pImageBuf || !pCamera)
     {
         errlogPrintf("image8b_process is called with no legal pImageBuf or pCamera!\n");
         return -1;
     }
+
+    /* Check if the image is splitted by seeing if sum of the first row is 0 before noise reduction */
+    for(loop=0; loop < pCamera->numOfCol; loop++)
+        sumRow0 += pImageBuf->ppRow[0][loop];
+
+    if(sumRow0) pImageBuf->splittedImage = 1;
+    else pImageBuf->splittedImage = 0;
 
     /* copy the ratio into each image buffer */
     pImageBuf->noiseRatio = pCamera->noiseRatio;
@@ -429,6 +441,8 @@ static long init_ai(struct aiRecord *pai);
 static long read_ai(struct aiRecord *pai);
 static long init_ao(struct aoRecord *pao);
 static long write_ao(struct aoRecord *pao);
+static long init_bi(struct biRecord *pbi);
+static long read_bi(struct biRecord *pbi);
 static long init_bo(struct boRecord *pbo);
 static long write_bo(struct boRecord *pbo);
 static long init_li(struct longinRecord *pli);
@@ -452,6 +466,7 @@ typedef struct {
 
 PTM6710CL_DEV_SUP_SET devAiEDTCL_PTM6710=   {6, NULL, NULL, init_ai,  NULL, read_ai,  NULL};
 PTM6710CL_DEV_SUP_SET devAoEDTCL_PTM6710=   {6, NULL, NULL, init_ao,  NULL, write_ao,  NULL};
+PTM6710CL_DEV_SUP_SET devBiEDTCL_PTM6710=   {6, NULL, NULL, init_bi,  NULL, read_bi,  NULL};
 PTM6710CL_DEV_SUP_SET devBoEDTCL_PTM6710=   {6, NULL, NULL, init_bo,  NULL, write_bo,  NULL};
 PTM6710CL_DEV_SUP_SET devLiEDTCL_PTM6710=   {6, NULL, NULL, init_li,  NULL, read_li,  NULL};
 PTM6710CL_DEV_SUP_SET devLoEDTCL_PTM6710=   {6, NULL, NULL, init_lo,  NULL, write_lo,  NULL};
@@ -460,6 +475,7 @@ PTM6710CL_DEV_SUP_SET devWfEDTCL_PTM6710=   {6, NULL, NULL, init_wf,  NULL, read
 #if	EPICS_VERSION>=3 && EPICS_REVISION>=14
 epicsExportAddress(dset, devAiEDTCL_PTM6710);
 epicsExportAddress(dset, devAoEDTCL_PTM6710);
+epicsExportAddress(dset, devBiEDTCL_PTM6710);
 epicsExportAddress(dset, devBoEDTCL_PTM6710);
 epicsExportAddress(dset, devLiEDTCL_PTM6710);
 epicsExportAddress(dset, devLoEDTCL_PTM6710);
@@ -494,6 +510,9 @@ typedef enum {
     PTM6710CL_AI_HisCtrdX,
     PTM6710CL_AI_HisCtrdY,
     PTM6710CL_AO_NoiseRatio,
+    PTM6710CL_BI_CurDarkImg,
+    PTM6710CL_BI_CurSpltImg,
+    PTM6710CL_BI_HisSpltImg,
     PTM6710CL_BO_SaveImage,
     PTM6710CL_LI_NumOfCol,
     PTM6710CL_LI_NumOfRow,
@@ -524,6 +543,9 @@ static struct PARAM_MAP
     {"HisCtrdX",	EPICS_RTYPE_AI,	PTM6710CL_AI_HisCtrdX},
     {"HisCtrdY",	EPICS_RTYPE_AI,	PTM6710CL_AI_HisCtrdY},
     {"NoiseRatio",	EPICS_RTYPE_AO,	PTM6710CL_AO_NoiseRatio},
+    {"CurDarkImg",	EPICS_RTYPE_BI,	PTM6710CL_BI_CurDarkImg},
+    {"CurSpltImg",	EPICS_RTYPE_BI,	PTM6710CL_BI_CurSpltImg},
+    {"HisSpltImg",	EPICS_RTYPE_BI,	PTM6710CL_BI_HisSpltImg},
     {"SaveImage",	EPICS_RTYPE_BO,	PTM6710CL_BO_SaveImage},
     {"NumOfCol",	EPICS_RTYPE_LI,	PTM6710CL_LI_NumOfCol},
     {"NumOfRow",	EPICS_RTYPE_LI,	PTM6710CL_LI_NumOfRow},
@@ -835,6 +857,131 @@ static long write_ao(struct aoRecord * pao)
     }
 
     return 0;
+}
+
+/********* bi record *****************/
+static long init_bi( struct biRecord * pbi)
+{
+    pbi->dpvt = NULL;
+
+    if (pbi->inp.type!=INST_IO)
+    {
+        recGblRecordError(S_db_badField, (void *)pbi, "devBiEDTCL_PTM6710 Init_record, Illegal INP");
+        pbi->pact=TRUE;
+        return (S_db_badField);
+    }
+
+    pbi->mask = 0;
+
+    if( PTM6710CL_DevData_Init((dbCommon *)pbi, EPICS_RTYPE_BI, pbi->inp.value.instio.string) != 0 )
+    {
+        errlogPrintf("Fail to init devdata for record %s!\n", pbi->name);
+        recGblRecordError(S_db_badField, (void *) pbi, "Init devdata Error");
+        pbi->pact = TRUE;
+        return (S_db_badField);
+    }
+
+    return 0;
+}
+
+static long read_bi(struct biRecord * pbi)
+{
+    PTM6710CL_DEVDATA * pdevdata;
+    PTM6710CL_CAMERA * pCamera;
+
+    IMAGE_BUF * pCurImageBuf;	/* current image buffer, could be ping-pong or circular buffer */
+    IMAGE_BUF * pHisImageBuf;	/* history image buffer, must be from circular buffer */
+
+    int numOfAvailFrames = 0;
+
+    if(!(pbi->dpvt)) return -1;
+
+    pdevdata = (PTM6710CL_DEVDATA *)(pbi->dpvt);
+    pCamera = pdevdata->pCamera;
+
+    if(pCamera->saveImage)
+    {/* current image is from circular buffer */
+        epicsMutexLock(pCamera->historyBufMutexLock);
+        if(!pCamera->historyBufFull && pCamera->historyBufIndex == 0)
+        {
+            pCurImageBuf = NULL;
+        }
+        else
+        {
+            pCurImageBuf = pCamera->historyBuf + ((pCamera->historyBufIndex + NUM_OF_FRAMES - 1) % NUM_OF_FRAMES);
+        }
+        epicsMutexUnlock(pCamera->historyBufMutexLock);
+    }
+    else
+    {/* current image is from ping-pong buffer */
+        pCurImageBuf = pCamera->pingpongBuf + (1 - pCamera->pingpongFlag);
+    }
+
+    epicsMutexLock(pCamera->historyBufMutexLock);
+    if(pCamera->historyBufFull) numOfAvailFrames = NUM_OF_FRAMES - 1;/* reserve last frame always */
+    else numOfAvailFrames = pCamera->historyBufIndex;
+
+    if( (numOfAvailFrames + pCamera->historyBufReadOffset) <= 0 )
+    {
+        pHisImageBuf = NULL;
+    }
+    else
+    {
+        pHisImageBuf = pCamera->historyBuf + ((pCamera->historyBufIndex + NUM_OF_FRAMES - 1 + pCamera->historyBufReadOffset) % NUM_OF_FRAMES);
+    }
+    epicsMutexUnlock(pCamera->historyBufMutexLock);
+
+    switch(pdevdata->function)
+    {
+    case PTM6710CL_BI_CurDarkImg:
+        if(pCurImageBuf)
+        {
+            epicsMutexLock(pCamera->mutexLock);
+            if(pCurImageBuf->p2pProjectionX >= pCamera->thresholdP2PProjX || pCurImageBuf->p2pProjectionY >= pCamera->thresholdP2PProjY)
+                pbi->rval = 0;
+            else
+                pbi->rval = 1;
+            epicsMutexUnlock(pCamera->mutexLock);
+
+            if(pbi->tse == epicsTimeEventDeviceTime)/* do timestamp by device support */
+                pbi->time = pCurImageBuf->timeStamp;
+        }
+        else
+        {
+            recGblSetSevr(pbi,READ_ALARM,INVALID_ALARM);
+        }
+        break;
+    case PTM6710CL_BI_CurSpltImg:
+        if(pCurImageBuf)
+        {
+            pbi->rval = pCurImageBuf->splittedImage;
+
+            if(pbi->tse == epicsTimeEventDeviceTime)/* do timestamp by device support */
+                pbi->time = pCurImageBuf->timeStamp;
+        }
+        else
+        {
+            recGblSetSevr(pbi,READ_ALARM,INVALID_ALARM);
+        }
+        break;
+    case PTM6710CL_BI_HisSpltImg:
+        if(pHisImageBuf)
+        {
+            pbi->rval = pHisImageBuf->splittedImage;
+
+            if(pbi->tse == epicsTimeEventDeviceTime)/* do timestamp by device support */
+                pbi->time = pHisImageBuf->timeStamp;
+        }
+        else
+        {
+            recGblSetSevr(pbi,READ_ALARM,INVALID_ALARM);
+        }
+        break;
+    default:
+        return -1;
+    }
+
+    return 0;	/* do conversion */
 }
 
 /********* bo record *****************/
