@@ -1,3 +1,7 @@
+EDT_CL-R1-3-5:
+Change EPICS_BASE path
+Use event number 143 to timestamp image
+
 EDT_CL-R1-3-4:
 Add splitted image and dark image detection for PULNiX YM6710CL
 
