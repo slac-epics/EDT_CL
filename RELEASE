@@ -10,10 +10,13 @@
 #--------------------------------------------------------------
 #  Mod:
 #        08-Oct-2007, K. Luchini          (LUCHINI):
+#          release EDT_CL_R1-3-7
 #          release EDT_CL_R1-3-6
 #
 #==============================================================
 #
+EDT_CL_R1-3-6:    Build with base-R3-14-9-lcls1 (RTEMS 4.7.1)
+
 EDT_CL_R1-3-6:    Build with base-R3-14-8-2-lcls2 (RTEMS 4.7.1)
                   Add standard header
 
