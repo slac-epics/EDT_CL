@@ -1,20 +1,21 @@
 #RELEASE Location of external products
 # Run "gnumake clean uninstall install" in the application
 # top directory each time this file is changed.
-#
-# NOTE: The build does not check dependancies on files
-# external to this application. Thus you should run
-# "gnumake clean uninstall install" in the top directory
-# each time EPICS_BASE, SNCSEQ, or any other external
-# module defined in the RELEASE file is rebuilt.
 
+include $(TOP)/RELEASE_SITE
+
+TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
+
+# If you don't want to install into $(TOP) then
+# define INSTALL_LOCATION_APP here
+#INSTALL_LOCATION_APP=<fullpathname>
 
 # =============================================================
 # Define the top of the EPICS tree for your site.
 # We will build some tools/scripts that allow us to
 # change this easily when relocating software.
 # ==============================================================
-EPICS_SITE_TOP=/nfs/slac/g/lcls/build/epics
+#EPICS_SITE_TOP=/nfs/slac/g/lcls/build/epics
 
 
 
