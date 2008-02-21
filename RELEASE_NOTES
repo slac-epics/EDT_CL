@@ -15,6 +15,10 @@
 #
 #==============================================================
 #
+#
+
+EDT_CL_R1-3-7-1:  Cosmetic changes for EPICS 3.14.9 at LCLS  
+
 EDT_CL_R1-3-7:    Build with base-R3-14-9-lcls1 (RTEMS 4.7.1)
 
 EDT_CL_R1-3-6:    Build with base-R3-14-8-2-lcls2 (RTEMS 4.7.1)
