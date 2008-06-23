@@ -107,8 +107,13 @@ int deIntlv_ES10_8(u_char * src, int width, int rows, u_char * dest)
     {
         for (x = 0; x < width; x++)
         {
+#if 0
             *even_dst++ = *src++;
             *odd_dst++ = *src++;
+#else
+            *odd_dst++ = *src++;
+            *even_dst++ = *src++;
+#endif
         }
         even_dst += width;
         odd_dst += width;
