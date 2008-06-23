@@ -223,7 +223,7 @@ static int image8b_process(IMAGE_BUF * pImageBuf, PTM6710CL_CAMERA * pCamera)
     }
     threshold = max_pixel * pImageBuf->noiseRatio;
     for(loop=0; loop < pCamera->imageSize; loop++)
-        pImageBuf->pImage[loop] = (pImageBuf->pImage[loop] <= threshold) ? 0 : (pImageBuf->pImage[loop] - threshold);
+        pImageBuf->pImage[loop] = (pImageBuf->pImage[loop] <= threshold) ? 0 : (pImageBuf->pImage[loop] /*- threshold*/);
 
     /****** Calculation of projection ******/
         /* Projection to vertical axel */
