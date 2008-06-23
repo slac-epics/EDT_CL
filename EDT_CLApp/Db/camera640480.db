@@ -239,7 +239,7 @@ record(longout, "$(user):TSHD_P2P") {
   field(DTYP, "EDTCL_PTM6710")
   field(OUT,  "@$(CAMERA):ThresholdP2P")
   field(EGU,  "")
-  field(DOL,  "10")
+#  field(DOL,  "10")
   field(HOPR, "255")
   field(DRVH, "255")
   field(LOPR, "0")
