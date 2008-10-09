@@ -18,11 +18,10 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 #EPICS_SITE_TOP=/nfs/slac/g/lcls/build/epics
 
 
-
 # ==============================================================
 # Define the cvs module version of EPICS BASE that you will use
 # =============================================================
-BASE_MODULE_VERSION=base-R3-14-9-lcls1
+BASE_MODULE_VERSION=base-R3-14-8-2-lcls2
 
 
 # =================================================================
