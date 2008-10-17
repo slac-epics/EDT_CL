@@ -16,6 +16,7 @@
 #==============================================================
 #
 #
+EDT_CL-R1-3-9:    Add support of PULNiX TM4200CL PW mode for XTOD
 
 EDT_CL-R1-3-7-1:  Cosmetic changes for EPICS 3.14.9 at LCLS  
 

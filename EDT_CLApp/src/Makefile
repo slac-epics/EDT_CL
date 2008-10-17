@@ -33,6 +33,7 @@ EDT_CL_SRCS += pdv_initcam.c
 EDT_CL_SRCS += trydrv.c
 EDT_CL_SRCS += devCommonCamera.c
 EDT_CL_SRCS += devPTM6710CL.c
+EDT_CL_SRCS += devPTM4200CL.c
 EDT_CL_SRCS += devUP900CL12B.c
 
 # <name>_registerRecordDeviceDriver.cpp will be created from <name>.dbd
