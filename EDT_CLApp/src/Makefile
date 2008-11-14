@@ -30,6 +30,7 @@ EDT_CL_SRCS += libdvu.c
 EDT_CL_SRCS += pdv_interlace.c
 EDT_CL_SRCS += myinitcam.c
 EDT_CL_SRCS += pdv_initcam.c
+EDT_CL_SRCS += pmcdvfox_load.c
 EDT_CL_SRCS += trydrv.c
 EDT_CL_SRCS += devCommonCamera.c
 EDT_CL_SRCS += devPTM6710CL.c
