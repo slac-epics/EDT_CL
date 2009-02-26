@@ -23,6 +23,8 @@ TODO:             Change p2pthreshold/pixel to float value and give more explana
 EDT_CL-R1-3-9:    Add support of PULNiX TM4200CL PW mode for XTOD
                   For PTM6710CL, remove the noise ratio default to allow restore
                   Switch EPICS base back to R3.14.8.2 as LCLS standard
+                  Change default timing event ID to 159 for timestamp
+                  Support PMC DV Fox
 
 EDT_CL-R1-3-8:    For PTM6710CL, remove p2pthreshold/pixel default value to allow restore
                   For PTM6710CL, does not remove noise level from whole wf just to portion below noise level
