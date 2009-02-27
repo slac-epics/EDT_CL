@@ -15,7 +15,7 @@ static void w8(int reg, int val) { edt_reg_write(pvt_edt_p, reg, val); }
 static int  r8(int reg) { return(edt_reg_read(pvt_edt_p, reg)&0xff); }
 #define XCMD 0x01000085	    /* Control bits in XC9572 PAL, see comments above */
 #define XDAT 0x01000084	    /* 8 bit data bus between PCI Xilinx and PAL/ROM */
-static int bitflip[]={0,8,4,12,2,10,6,14, 1,9,5,13,3,11,7,15};  /* flip a nibble */
+static const int bitflip[]={0,8,4,12,2,10,6,14, 1,9,5,13,3,11,7,15};  /* flip a nibble */
 static int bytecnt=0;
 static int get_fbyte()
 {/* Read the next byte from flash ROM, EOF if done */
@@ -68,6 +68,7 @@ char * pmcdvfox_load(EdtDev *edt_p)
     int donecnt=0; int sinitcnt=0;
 
     pvt_edt_p = edt_p;
+    bytecnt = 0;
 
     wxx(XX_PROG);		/* Assert PROGL to Xilinx to reset it */
     if (rxx() & XX_SINITL) return("Err, INITL stuck high with PROGL is low\n");
