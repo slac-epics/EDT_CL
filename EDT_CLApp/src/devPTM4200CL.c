@@ -1051,7 +1051,7 @@ static int image12b_noise_reduce(unsigned char * image, int image_size, float th
 {
     int loop;
     int max_pixel=0;
-    int min_pixel=256;
+    int min_pixel=4096;
     int threshold=0;
 
     unsigned short int * pimage;
@@ -1071,7 +1071,6 @@ static int image12b_noise_reduce(unsigned char * image, int image_size, float th
 
 static int image12b_projection_calc(const unsigned char * image, int * proj_H, int num_col, int * proj_V, int num_row)
 {
-    /* So far for simplicity, we just assume the image pixel is unsigned char */
     int loop, subloop;
     const unsigned short int  ** Y;
 
@@ -1113,9 +1112,8 @@ static int image12b_projection_calc(const unsigned char * image, int * proj_H, i
 
 static int image12b_centroid_calc(int * proj_H, int num_col, int * proj_V, int num_row, double * cen_H, double * cen_V)
 {
-    /* So far for simplicity, we just assume the image pixel is unsigned char */
     int loop;
-    int sum_image=0;
+    double sum_image=0.0;	/* About 4M pixels, so 23bits. The 12bits per pixel, to up to 35 bits */
     double sum=0.0;
 
     if(!proj_H) return -1;
@@ -1124,7 +1122,7 @@ static int image12b_centroid_calc(int * proj_H, int num_col, int * proj_V, int n
     if(!cen_V) return -1;
 
     /* cakculate centroid H */
-    sum_image = 0;
+    sum_image = 0.0;
     sum = 0.0;
     for(loop=0; loop<num_col; loop++)
     {
