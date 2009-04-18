@@ -219,7 +219,7 @@ static int image8b_process(IMAGE_BUF * pImageBuf, PTM6710CL_CAMERA * pCamera)
     for(loop=0; loop < pCamera->imageSize; loop++)
     {
         max_pixel = max(max_pixel, pImageBuf->pImage[loop]);
-        /*min_pixel = min(min_pixel, image[loop]);*/
+        /*min_pixel = min(min_pixel, pImageBuf->pImage[loop]);*/
     }
     threshold = max_pixel * pImageBuf->noiseRatio;
     for(loop=0; loop < pCamera->imageSize; loop++)
