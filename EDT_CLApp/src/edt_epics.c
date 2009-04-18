@@ -1,5 +1,8 @@
 #include "edtdrv.h" 
 #include "string.h" 
+
+int EDT_PMC_DV_FOX=0;
+
 extern int EDT_DRV_DEBUG;
 #define EDT_BUFSIZE (1024*1024*2)
 
@@ -55,7 +58,7 @@ int get_edt_base(int num)
      int bus,device,function;
      unsigned int bar;
      int err;
-     err=epicsPciFindDevice(0x123d,0x0034,num,&bus,&device,&function);
+     err=epicsPciFindDevice(0x123d,EDT_PMC_DV_FOX?0x4c:0x34,num,&bus,&device,&function);
      if(err)	err=epicsPciFindDevice(0x123d,0x0014,num,&bus,&device,&function);
      if(err)	return(0) ;
      err=epicsPciConfigInLong(bus,device,function,0x10 /* PCI_CFG_BASE_ADDRESS_0 */,&bar);
@@ -109,7 +112,7 @@ int edtDevCreate
     unsigned char irqPin;
     int devid;
 
-    devid = PDVCL_ID ;
+    devid = EDT_PMC_DV_FOX?PDVFOX_ID:PDVCL_ID;
     status = epicsPciFindDevice(0x123d,devid,board,&bus,&dev,&func);
     if (status != OK) devid = PDVK_ID;
     status = epicsPciFindDevice(0x123d,devid,board,&bus,&dev,&func);
