@@ -36,6 +36,7 @@ EDT_CL_SRCS += devCommonCamera.c
 EDT_CL_SRCS += devPTM6710CL.c
 EDT_CL_SRCS += devPTM4200CL.c
 EDT_CL_SRCS += devUP900CL12B.c
+EDT_CL_SRCS += devUP685CL.c
 
 # <name>_registerRecordDeviceDriver.cpp will be created from <name>.dbd
 # The following adds support from base/src/vxWorks

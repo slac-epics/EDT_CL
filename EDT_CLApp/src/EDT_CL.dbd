@@ -18,4 +18,12 @@ device(longin,	INST_IO,devLiEDTCL_PTM4200_12B,	"EDTCL_PTM4200_12B")
 device(longout,	INST_IO,devLoEDTCL_PTM4200_12B,	"EDTCL_PTM4200_12B")
 device(waveform,INST_IO,devWfEDTCL_PTM4200_12B,	"EDTCL_PTM4200_12B")
 
+device(ai,	INST_IO,devAiEDTCL_UP685,	"EDTCL_UP685")
+device(ao,	INST_IO,devAoEDTCL_UP685,	"EDTCL_UP685")
+device(bi,	INST_IO,devBiEDTCL_UP685,	"EDTCL_UP685")
+device(bo,	INST_IO,devBoEDTCL_UP685,	"EDTCL_UP685")
+device(longin,	INST_IO,devLiEDTCL_UP685,	"EDTCL_UP685")
+device(longout,	INST_IO,devLoEDTCL_UP685,	"EDTCL_UP685")
+device(waveform,INST_IO,devWfEDTCL_UP685,	"EDTCL_UP685")
+
 driver(drvCommonCamera)
