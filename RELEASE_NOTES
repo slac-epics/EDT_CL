@@ -19,6 +19,10 @@
 TODO:             Change p2pthreshold/pixel to float value and give more explanation
                   Add minimal number of pixel noise
                   Add timestamp event ID record
+                  Add I/O Intr for waveform record
+
+EDT_CL-R1-4-0:
+                  Add UP685 support, both 10b and 8b, both freerun and pulse width mode
 
 EDT_CL-R1-3-9:    Add support of PULNiX TM4200CL PW mode for XTOD
                   For PTM6710CL, remove the noise ratio default to allow restore
