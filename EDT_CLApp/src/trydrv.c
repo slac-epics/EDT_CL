@@ -4,6 +4,7 @@
 
 #include <edtinc.h>
 #include <libpdv.h>
+#include <registryFunction.h>
 
 unsigned char * pimage;
 
@@ -169,5 +170,7 @@ int do_speed_both(int dmy, int mode)
 	free(all_buffers2) ;
 	return 0;
 }
+epicsRegisterFunction(do_speed_test);
+epicsRegisterFunction(do_speed_both);
 
 
