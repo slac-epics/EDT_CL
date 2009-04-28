@@ -37,6 +37,7 @@ int initcam(int unit, int channel, char * cfgname)
 
     if (ret != 0) exit(1);
     /* Always skipped bitfile load since we don't want to access file */
+    /* Make sure rbtfile[0] is not 0x0, so pdv_initcam will copy firmware for PDVFOX */
     strcpy(dd_p->rbtfile, "_SKIPPED_");
 
     /*
