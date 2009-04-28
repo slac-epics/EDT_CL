@@ -63,6 +63,7 @@
 #include <libcpu/io.h>
 #include <libcpu/byteorder.h>
 /*#include <sys/systm.h>*/
+#include <rtems/bspIo.h>
 #define HANDLE int
 #define DIRHANDLE int
 
