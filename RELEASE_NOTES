@@ -21,6 +21,8 @@ TODO:             Change p2pthreshold/pixel to float value and give more explana
                   Add timestamp event ID record
                   Add I/O Intr for waveform record
 
+EDT_CL-R1-4-1:
+                  Add take debug tool
 EDT_CL-R1-4-0:
                   Add UP685 support, both 10b and 8b, both freerun and pulse width mode
 

@@ -5603,6 +5603,47 @@ pdv_stop_continuous(PdvDev * pdv_p)
 #endif
 }
 
+/**
+ * * Cleans up after a timeout, particularly when you've prestarted multiple
+ * * buffers or if you've forced a timeout with #edt_do_timeout. The example
+ * * programs \e \b take.c and \e \b simple_take.c have examples of use; note that these
+ * * examples call \b pdv_timeout_restart twice, which may be overkill for some
+ * * applications/cameras.  If the system is configured properly (and all cables/
+ * * cameras have robust connections), timeouts should not be a factor. Even so,
+ * * a robust app will handle timeouts gracefully so it is a good idea to experiment
+ * * with various timeout recovery methods to make sure you have something that
+ * * works for your situation.
+ * *
+ * * @param pdv_p pointer to pdv device structure returned by #pdv_open
+ * * @param restart whether to immediately restart acquiring.
+ * *
+ * * @return # of buffers left undone; normally will be used as argument to
+ * * #pdv_start_images if calling routine wants to restart pipeline as if
+ * * nothing happened (see \e take.c and \e simple_take.c for examples of use).
+ * * @see pdv_timeouts
+ * */
+
+int
+pdv_timeout_restart(PdvDev * pdv_p, int restart)
+{
+    int     curdone, curtodo;
+
+    curdone = edt_done_count(pdv_p);
+    curtodo = edt_get_todo(pdv_p);
+
+    edt_abort_dma(pdv_p);
+    pdv_stop_continuous(pdv_p);
+
+    edt_set_buffer(pdv_p, curdone);
+    edt_reg_write(pdv_p, PDV_CMD, PDV_RESET_INTFC);
+    pdv_setup_continuous(pdv_p);
+
+    if (restart && (curtodo - curdone))
+       pdv_start_images(pdv_p, curtodo - curdone);
+
+   return curtodo - curdone;
+}
+
 /* for debug printfs only */
 static char hs[128];
 static char *
