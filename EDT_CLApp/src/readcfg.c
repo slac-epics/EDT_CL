@@ -7,6 +7,7 @@
  * DESCRIPTION reads the chosen camera config file into a structure
  */
 
+#include "string.h"
 #include "edtinc.h"
 #include "epicsString.h"
 #include "myinitcam.h"
@@ -83,7 +84,7 @@ int readcfg(char *cfgfilename, Dependent * dd_p, Edtinfo * ei_p, int nofs_cfg)
     /* int     pdv_unit = 0; */ /* unused */
     int     ret;
     char    **vx_p = dmy_cfg;
-    FILE   *cfg_fp;
+    FILE   *cfg_fp = NULL;
     char    s[256];
     char    *sp;
     int     lineno = 0;
@@ -130,6 +131,7 @@ int readcfg(char *cfgfilename, Dependent * dd_p, Edtinfo * ei_p, int nofs_cfg)
     dd_p->user_timeout = NOT_SET;
     dd_p->mode_cntl_norm = NOT_SET;
     dd_p->mc4 = NOT_SET;
+    dd_p->mode16 = NOT_SET;
     dd_p->pulnix = 0;
     dd_p->dbl_trig = 0;
     dd_p->shift = NOT_SET;

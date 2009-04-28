@@ -515,8 +515,28 @@ int pdv_initcam_reset_camera(EdtDev * edt_p, Dependent * dd_p, Edtinfo * p_edtin
 	else
 	    util3 &= ~PDV_FV_INVERT;
 
+#if 0
 	if ((edt_p->devid == PDVFOX_ID) && dd_p->mode16)
 	    util3 |= PDV_MODE16;
+#else
+	/*
+	 * set dvfox mode16 automatically (ON if 8 bits single or dual channel
+	 * or 8-16 bits single channel, otherwise off), unless specifically set
+	 * in the config file
+	 */
+	if (edt_p->devid == PDVFOX_ID)
+	{
+	    if (dd_p->mode16 == NOT_SET)
+	    {
+		if ((!(dd_p->cl_cfg & PDV_CL_CFG_RGB))
+		 && (((dd_p->cl_data_path & 0x0f) == 0x07)
+		 || (dd_p->cl_data_path <= 0x0f)))
+		    util3 |= PDV_MODE16;
+	    }
+	    else if (dd_p->mode16)
+		util3 |= PDV_MODE16;
+	}
+#endif
 
 	if(EDT_DRV_DEBUG) errlogPrintf("UTIL3 %x\n", util3);
 	dep_wait(edt_p);
@@ -1191,7 +1211,11 @@ serial_init(EdtDev * edt_p, Dependent * dd_p)
                             if(strstr(resp, "RR"))
                             {
                                 int xxloop=2;
-                                while(resp[xxloop]!='\r') printf("0x%c%c ", resp[xxloop++], resp[xxloop++]);
+                                while(resp[xxloop]!='\r')
+				{
+				    printf("0x%c%c ", resp[xxloop], resp[xxloop+1]);
+				    xxloop+=2;
+				}
                                 printf("\n");
                             }
                         }
