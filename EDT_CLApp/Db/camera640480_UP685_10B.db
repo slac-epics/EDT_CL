@@ -9,7 +9,7 @@ record(ai, "$(user):RESOLUTION") {
 record(bi, "$(user):SPLTIMG")
 {
   field(DESC, "Splitted Image?")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):CurSpltImg")
   field(SCAN, ".1 second")
   field(TSE,  "-2")
@@ -22,7 +22,7 @@ record(bi, "$(user):SPLTIMG")
 record(bi, "$(user):DARKIMG")
 {
   field(DESC, "Dark Image?")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):CurDarkImg")
   field(TSE,  "-2")
   field(ZNAM, "Image OK")
@@ -34,7 +34,7 @@ record(bi, "$(user):DARKIMG")
 record(ai, "$(user):CTRD_H")
 {
   field(DESC, "Centroid Horizontal")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):CurCtrdX")
   field(EGU,  "mm")
   field(TSE,  "-2")
@@ -55,7 +55,7 @@ record(ai, "$(user):CTRD_H")
 record(ai, "$(user):CTRD_V")
 {
   field(DESC, "Centroid Vertical")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):CurCtrdY")
   field(EGU,  "mm")
   field(TSE,  "-2")
@@ -180,7 +180,7 @@ record(ao, "$(user):CTRD_V_BOOK")
 record(ao, "$(user):NOISE_RATIO")
 {
   field(DESC, "Noise Ratio")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(OUT,  "@$(CAMERA):NoiseRatio")
   field(EGU,  "")
   field(PREC, "3")
@@ -195,7 +195,7 @@ record(ao, "$(user):NOISE_RATIO")
 record(bo, "$(user):SAVE_IMG")
 {
   field(DESC, "saveImage")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(OUT,  "@$(CAMERA):SaveImage")
   field(ZNAM, "FreeRun")
   field(ONAM, "Save")
@@ -203,7 +203,7 @@ record(bo, "$(user):SAVE_IMG")
 
 record(longin, "$(user):N_OF_COL") {
   field(DESC, "n of col")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):NumOfCol")
   field(PINI, "YES")
   field(EGU,  "pixels")
@@ -211,7 +211,7 @@ record(longin, "$(user):N_OF_COL") {
 
 record(longin, "$(user):N_OF_ROW") {
   field(DESC, "n of row")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):NumOfRow")
   field(PINI, "YES")
   field(EGU,  "pixels")
@@ -219,7 +219,7 @@ record(longin, "$(user):N_OF_ROW") {
 
 record(longin, "$(user):N_OF_BITS") {
   field(DESC, "n of bits")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):NumOfBits")
   field(PINI, "YES")
   field(EGU,  "bits")
@@ -227,7 +227,7 @@ record(longin, "$(user):N_OF_BITS") {
 
 record(longin, "$(user):FRAME_RATE") {
   field(DESC, "frame rate")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):FrameRate")
   field(SCAN, "1 second")
   field(EGU,  "fps")
@@ -236,7 +236,7 @@ record(longin, "$(user):FRAME_RATE") {
 
 record(longout, "$(user):TSHD_P2P") {
   field(DESC, "threshold P2P")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(OUT,  "@$(CAMERA):ThresholdP2P")
   field(EGU,  "")
 #  field(DOL,  "10")
@@ -249,11 +249,11 @@ record(longout, "$(user):TSHD_P2P") {
 
 record(waveform, "$(user):IMAGE") {
   field(DESC, "Image")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):CurImage")
   field(TSE,  "-2")
   field(FTVL, "USHORT")
-  field(NELM, "323400")
+  field(NELM, "307200")
   field(EGU,  "units")
   field(SCAN, ".2 second")
   field(PHAS, "2")
@@ -262,39 +262,39 @@ record(waveform, "$(user):IMAGE") {
 
 record(waveform, "$(user):PROJ_H") {
   field(DESC, "Projection Horizontal")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):CurProjX")
   field(TSE,  "-2")
   field(FTVL, "LONG")
-  field(NELM, "660")
+  field(NELM, "640")
   field(EGU,  "units")
   field(FLNK, "$(user):PROJ_V")
 }
 
 record(waveform, "$(user):PROJ_V") {
   field(DESC, "Projection Vertical")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):CurProjY")
   field(TSE,  "-2")
   field(FTVL, "LONG")
-  field(NELM, "490")
+  field(NELM, "480")
   field(EGU,  "units")
 }
 
 record(longout, "$(user):IMG_BUF_IDX") {
   field(DESC, "hisImageIndex")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(OUT,  "@$(CAMERA):HisIndex")
   field(FLNK, "$(user):BUFD_IMG")
 }
 
 record(waveform, "$(user):BUFD_IMG") {
   field(DESC, "Image")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):HisImage")
   field(TSE,  "-2")
   field(FTVL, "USHORT")
-  field(NELM, "323400")
+  field(NELM, "307200")
   field(EGU,  "units")
   field(FLNK, "$(user):BUFD_SPLTIMG")
 }
@@ -302,7 +302,7 @@ record(waveform, "$(user):BUFD_IMG") {
 record(bi, "$(user):BUFD_SPLTIMG")
 {
   field(DESC, "Splitted Image?")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):HisSpltImg")
   field(TSE,  "-2")
   field(OSV,  "MAJOR")
@@ -311,22 +311,22 @@ record(bi, "$(user):BUFD_SPLTIMG")
 
 record(waveform, "$(user):BUFD_PROJ_H") {
   field(DESC, "Projection Horizontal")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):HisProjX")
   field(TSE,  "-2")
   field(FTVL, "LONG")
-  field(NELM, "660")
+  field(NELM, "640")
   field(EGU,  "units")
   field(FLNK, "$(user):BUFD_PROJ_V")
 }
 
 record(waveform, "$(user):BUFD_PROJ_V") {
   field(DESC, "Projection Vertical")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):HisProjY")
   field(TSE,  "-2")
   field(FTVL, "LONG")
-  field(NELM, "490")
+  field(NELM, "480")
   field(EGU,  "units")
   field(FLNK, "$(user):BUFD_CTRD_H")
 }
@@ -334,7 +334,7 @@ record(waveform, "$(user):BUFD_PROJ_V") {
 record(ai, "$(user):BUFD_CTRD_H")
 {
   field(DESC, "Centroid Horizontal")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):HisCtrdX")
   field(TSE,  "-2")
   field(EGU,  "mm")
@@ -355,7 +355,7 @@ record(ai, "$(user):BUFD_CTRD_H")
 record(ai, "$(user):BUFD_CTRD_V")
 {
   field(DESC, "Centroid Vertical")
-  field(DTYP, "EDTCL_UP685")
+  field(DTYP, "EDTCL_UP685_10B")
   field(INP,  "@$(CAMERA):HisCtrdY")
   field(TSE,  "-2")
   field(EGU,  "mm")
