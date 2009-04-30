@@ -9,13 +9,17 @@
 #  Rev:  dd-mmm-yyyy, Reviewer's Name    (USERNAME)
 #--------------------------------------------------------------
 #  Mod:
+#        29-Apr-2009, K. Luchini          (LUCHINI)
+#          release EDT_CL-R2-0-0
 #        08-Oct-2007, K. Luchini          (LUCHINI):
-#          release EDT_CL_R1-3-7
-#          release EDT_CL_R1-3-6
+#          release EDT_CL-R1-3-7
+#          release EDT_CL-R1-3-6
 #
 #==============================================================
 #
 #
+EDT_CL-R2-0-0      Build with rtems-4.9.1 and base-r3-14-8-2-lcls3
+
 TODO:             Change p2pthreshold/pixel to float value and give more explanation
                   Add minimal number of pixel noise
                   Add timestamp event ID record
