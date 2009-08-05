@@ -18,6 +18,9 @@
 #==============================================================
 #
 #
+EDT_CL-R2-0-1      Add SMOO record for laser PTM6710CL centroid to lock
+                   Build with rtems-4.9.1 and base-r3-14-8-2-lcls3
+
 EDT_CL-R2-0-0      Build with rtems-4.9.1 and base-r3-14-8-2-lcls3
 
 TODO:             Change p2pthreshold/pixel to float value and give more explanation
