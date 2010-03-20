@@ -9,6 +9,8 @@
 #  Rev:  dd-mmm-yyyy, Reviewer's Name    (USERNAME)
 #--------------------------------------------------------------
 #  Mod:
+#        20-Mar-2010, S. Hoobler          (SONYA)
+#          release EDT_CL-R2-2-0
 #        29-Apr-2009, K. Luchini          (LUCHINI)
 #          release EDT_CL-R2-0-0
 #        08-Oct-2007, K. Luchini          (LUCHINI):
@@ -18,7 +20,10 @@
 #==============================================================
 #
 #
-EDT_CL-R2-0-1:     Build with base-R3-14-8-2-lcls5
+EDT_CL-R2-2-0:     Build with base-R3-14-8-2-lcls6
+                   Build with rtems-4.9.4
+
+EDT_CL-R2-1-1:     Build with base-R3-14-8-2-lcls5
                    Build with rtems-4.9.3
 
 EDT_CL-R2-0-1      Add SMOO record for laser PTM6710CL centroid to lock
