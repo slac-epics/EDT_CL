@@ -55,7 +55,7 @@ int PTM4200CL_DEV_DEBUG = 1;
 
 /* some constants about PULNiX PTM4200CL 12B camera */
 
-#define	NUM_OF_FRAMES	10	/* number of frames in circular buffer */
+#define	NUM_OF_FRAMES	5	/* number of frames in circular buffer */
 
 #define IMAGE_TS_EVT_NUM 159	/* upon which event we timestamp image */
 
