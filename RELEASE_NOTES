@@ -20,7 +20,9 @@
 #==============================================================
 #
 #
-EDT_CL-R2-2-1      Reduce ring buffer size of PTM4200 from 10 to 5 to save memory
+EDT_CL-R2-2-2:      Modified release file to follow eco.
+      
+EDT_CL-R2-2-1:      Reduce ring buffer size of PTM4200 from 10 to 5 to save memory
 
 EDT_CL-R2-2-0:     Build with base-R3-14-8-2-lcls6
                    Build with rtems-4.9.4
