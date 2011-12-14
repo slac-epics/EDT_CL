@@ -41,6 +41,15 @@
 #include <epicsExport.h>
 #endif
 
+/* Added this because of EPICS R3-14-12 */
+#ifndef max
+#define max(x, y)       (((x) < (y)) ? (y) : (x))
+#endif
+#ifndef min
+#define min(x, y)       (((x) < (y)) ? (x) : (y))
+#endif
+
+
 #include "devCommonCameraLib.h"
 
 int UP685CL10B_DEV_DEBUG = 1;

@@ -21,6 +21,9 @@
 #
 #
 EDT_CL-R2-2-2:      Modified release file to follow eco.
+                    needed to define macros for min() and max()
+                    as these were removed from EPICS BASE R3-14-11 and
+                    higher. 
       
 EDT_CL-R2-2-1:      Reduce ring buffer size of PTM4200 from 10 to 5 to save memory
 

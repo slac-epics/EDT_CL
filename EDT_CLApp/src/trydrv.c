@@ -6,6 +6,17 @@
 #include <libpdv.h>
 #include <registryFunction.h>
 
+
+/* Added this because of EPICS R3-14-12 */
+#ifndef max
+#define max(x, y)       (((x) < (y)) ? (y) : (x))
+#endif
+#ifndef min
+#define min(x, y)       (((x) < (y)) ? (x) : (y))
+#endif
+
+
+
 unsigned char * pimage;
 
 extern int initcam(int unit, int channel, char * cfgname);
