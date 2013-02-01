@@ -15,6 +15,45 @@ record(bo, "$(user):SAVE_IMG")
   field(ONAM, "Save")
 }
 
+record(longout, "$(user):NUM_IMAGES_DAQ")
+{
+  field(DESC, "numImagesDAQ")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(OUT,  "@$(CAMERA):NumImagesDAQ")
+  field(EGU,  "images")
+  field(HOPR, "100")
+  field(DRVH, "100")
+  field(LOPR, "1")
+  field(DRVL, "1")
+}
+
+record(bo, "$(user):TRIGGER_DAQ")
+{
+    field(DESC, "triggerDAQ")
+    field(DTYP, "EDTCL_UP900_12B")
+    field(OUT,  "@$(CAMERA):TriggerDAQ")
+    field(SCAN, "Event")
+    field(EVNT, "16")
+}
+
+record(longin, "$(user):DONE_DAQ")
+{
+  field(DESC, "Image DAQ finished")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):DoneDAQ")
+  field(PINI, "YES")
+  field(EGU,  "done")
+  field(SCAN, "I/O Intr")
+#  field(SCAN, "0.1 second")
+}
+
+record(stringout, "$(user):SAVE_IMG_DIR")
+{
+  field(DESC, "saveImageDir")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(OUT,  "@$(CAMERA):SaveImageDir")
+}
+
 record(longin, "$(user):N_OF_COL") {
   field(DESC, "n of col")
   field(DTYP, "EDTCL_UP900_12B")

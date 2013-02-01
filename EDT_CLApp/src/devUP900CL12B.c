@@ -7,6 +7,9 @@
 #define NO_STRCASECMP
 #define NO_MAIN
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <edtinc.h>
 #include <libpdv.h>
@@ -33,6 +36,7 @@
 #include <longinRecord.h>
 #include <longoutRecord.h>
 #include <waveformRecord.h>
+#include <stringoutRecord.h>
 #include <epicsVersion.h>
 
 #if EPICS_VERSION>=3 && EPICS_REVISION>=14
@@ -68,7 +72,7 @@ int UP900CL12B_DEV_DEBUG = 1;
 
 /* some constants about UNIQVision UP900CL-12B camera */
 
-#define	NUM_OF_FRAMES	50	/* number of frames in circular buffer */
+#define	NUM_OF_FRAMES	100	/* number of frames in circular buffer */
 
 #define IMAGE_TS_EVT_NUM 159	/* upon which event we timestamp image */
 
@@ -148,13 +152,102 @@ typedef struct UP900CL12B_CAMERA
     signed int		historyBufReadOffset;	/* The offset from the latest frame, starts from 0, must be 0 or negative number */
 
     epicsMutexId	mutexLock;	/*  general mutex semaphore */
+    char                saveImageDir[50];
+    int                 triggerDAQ; /* Set by the TRIGGER_DAQ PV when starting acquisition for saving to disk */
+    int                 numImagesDAQ; /* Number of images to be saved to disk (max is NUM_OF_FRAMES) */
+    int                 doneDAQ; /* Signaled when image DAQ is complete, i.e. saved to disk */
+    IOSCANPVT           ioscanpvt;
 } UP900CL12B_CAMERA;
 
 static int image12b_noise_reduce(unsigned char * image, int image_size, float threshold_ratio);
 static int image12b_projection_calc(const unsigned char * image, int * proj_H, int num_col, int * proj_V, int num_row);
 static int image12b_centroid_calc(int * proj_H, int num_col, int * proj_V, int num_row, double * cen_H, double * cen_V);
 
+#define DAQ_READY 0
+#define DAQ_ACQUIRING_IMAGES 1
+#define DAQ_SAVING_IMAGES 2
+
 unsigned int UP900_SHIFT_4BITS = 0;
+
+static char IMAGE_DIRECTORY[1024];
+
+static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCamera)
+{
+  time_t now;
+  struct tm *timeinfo;
+  char timestr[30];
+  size_t size;
+
+  time(&now);
+  timeinfo = localtime(&now);
+  strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo);
+  printf("[%s] Saving collected images to disk (%s).\n", timestr, pCamera->saveImageDir);
+
+  int images = pCamera->historyBufIndex;
+  char file_name[300];
+
+  time_t a, b;
+  time_t t = time(0);
+  printf("Start Time: %s", ctime(&t));
+
+  a = time(0);
+  int image_index = 0;
+  int image_size = pCamera->numOfCol * pCamera->numOfRow * sizeof(unsigned short int);
+  for (; image_index < num_images; image_index++) {
+    sprintf(file_name, "%s/%s-%d-%d.pgm",
+	    pCamera->saveImageDir,
+ 	    pCamera->pCameraName,
+	    pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
+	    pCamera->historyBuf[image_index].timeStamp.nsec);
+    
+/*     printf("Saving image file %s...", file_name); */
+    FILE *image_file = fopen(file_name, "w");
+    if (image_file == NULL) {
+      printf("Error opening file %s\n", file_name);
+      return -1;
+    }
+    /*
+    unsigned short int max_val = 0;
+    int val_index = 0;
+    for (;val_index < pCamera->numOfCol * pCamera->numOfRow; val_index++) {
+      if (pCamera->historyBuf[image_index].pImage[val_index] > max_val) {
+	max_val = pCamera->historyBuf[image_index].pImage[val_index];
+      }
+    }
+    */
+    now = pCamera->historyBuf[image_index].timeStamp.secPastEpoch;
+    timeinfo = localtime(&now);
+    strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo);
+
+    fprintf(image_file, "P5\n");
+    fprintf(image_file, "# Camera: %s\n", pCamera->pCameraName);
+    fprintf(image_file, "# Date: %s\n", timestr );
+    fprintf(image_file, "# EVR timestamp: %d sec %d nsec\n", pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
+	    pCamera->historyBuf[image_index].timeStamp.nsec);
+    fprintf(image_file, "# Sequence #%d\n", image_index);
+    fprintf(image_file, "%d %d\n", pCamera->numOfCol, pCamera->numOfRow);
+    fprintf(image_file, "65535\n");
+    
+    size = fwrite(pCamera->historyBuf[image_index].pImage, image_size, 1, image_file);
+    
+    fclose(image_file);
+/*     printf(" done.\n"); */
+  }
+  b = time(0);
+
+  time(&now);
+  timeinfo = localtime(&now);
+  strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo);
+  printf("[%s] Done saving collected images to disk (%s).\n", timestr, pCamera->saveImageDir);
+
+  float rate = image_size * num_images;
+  rate /= (b - a);
+  rate /= 1024;
+  rate /= 1024;
+  printf("Rate: %f MBytes/second\n", rate);
+  
+  return 0;
+}
 
 static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 {
@@ -176,7 +269,13 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
         /* Got a new frame */
         pCamera->frameCounts++;
 
-        saveImage = pCamera->saveImage;	/* copy once. So no worry about external change */
+/* 	if (saveImage != pCamera->saveImage) printf("Changing saveImage from %d to %d\n", */
+/* 						    saveImage, pCamera->saveImage); */
+	if (saveImage != pCamera->triggerDAQ) printf("Changing triggerDAQ from %d to %d\n",
+						     saveImage, pCamera->triggerDAQ);
+
+	/*         saveImage = pCamera->saveImage;*/	/* copy once. So no worry about external change */
+        saveImage = pCamera->triggerDAQ;	/* copy once. So no worry about external change */
 
         if(saveImage)
         {/* New frame goes into history buffer */
@@ -200,14 +299,25 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 
         /* Calculate projiection, FWHM, centroid ... */
 
-        if(saveImage)
+/*         if(saveImage) */
+	if (pCamera->triggerDAQ)
         {/* New frame goes into history buffer */
             epicsMutexLock(pCamera->historyBufMutexLock);
             pCamera->historyBufIndex++;
-            if(pCamera->historyBufIndex >= NUM_OF_FRAMES)
+
+            if(pCamera->historyBufIndex >= pCamera->numImagesDAQ)
             {
-                pCamera->historyBufIndex = 0;
-                pCamera->historyBufFull = 1;
+	      pCamera->doneDAQ = DAQ_SAVING_IMAGES;
+	      printf("STATUS=%d\n",pCamera->doneDAQ);
+  	      scanIoRequest(pCamera->ioscanpvt);
+	      UP900CL12B_FlushBufferToDisk(pCamera->numImagesDAQ, pCamera);
+	      pCamera->historyBufIndex = 0;
+	      pCamera->historyBufFull = 1;
+/* 	      pCamera->saveImage = 0; */
+	      pCamera->triggerDAQ = 0;
+	      pCamera->doneDAQ = DAQ_READY;
+	      printf("STATUS=%d\n",pCamera->doneDAQ);
+  	      scanIoRequest(pCamera->ioscanpvt);
             }
             epicsMutexUnlock(pCamera->historyBufMutexLock);
         }
@@ -314,6 +424,8 @@ int UP900CL12B_Init(char * name, int unit, int channel)
 
     pCamera->mutexLock = epicsMutexMustCreate();
 
+    scanIoInit(&(pCamera->ioscanpvt));
+
     /* We successfully allocate all resource */
     return 0;
 }
@@ -325,11 +437,14 @@ static long read_ai(struct aiRecord *pai);
 static long init_bo(struct boRecord *pbo);
 static long write_bo(struct boRecord *pbo);
 static long init_li(struct longinRecord *pli);
+static long get_li_ioinfo(int cmd, struct dbCommon *precord, IOSCANPVT *ppvt);
 static long read_li(struct longinRecord *pli);
 static long init_lo(struct longoutRecord *plo);
 static long write_lo(struct longoutRecord *plo);
 static long init_wf(struct waveformRecord *pwf);
 static long read_wf(struct waveformRecord *pwf);
+static long init_so(struct stringoutRecord *pso);
+static long write_so(struct stringoutRecord *pso);
 
 
 /* global struct for devSup */
@@ -345,9 +460,10 @@ typedef struct {
 
 UP900CL12B_DEV_SUP_SET devAiEDTCL_UP900_12B=   {6, NULL, NULL, init_ai,  NULL, read_ai,  NULL};
 UP900CL12B_DEV_SUP_SET devBoEDTCL_UP900_12B=   {6, NULL, NULL, init_bo,  NULL, write_bo,  NULL};
-UP900CL12B_DEV_SUP_SET devLiEDTCL_UP900_12B=   {6, NULL, NULL, init_li,  NULL, read_li,  NULL};
+UP900CL12B_DEV_SUP_SET devLiEDTCL_UP900_12B=   {6, NULL, NULL, init_li,  get_li_ioinfo, read_li,  NULL};
 UP900CL12B_DEV_SUP_SET devLoEDTCL_UP900_12B=   {6, NULL, NULL, init_lo,  NULL, write_lo,  NULL};
 UP900CL12B_DEV_SUP_SET devWfEDTCL_UP900_12B=   {6, NULL, NULL, init_wf,  NULL, read_wf,  NULL};
+UP900CL12B_DEV_SUP_SET devSoEDTCL_UP900_12B=   {6, NULL, NULL, init_so,  NULL, write_so,  NULL};
 
 #if	EPICS_VERSION>=3 && EPICS_REVISION>=14
 epicsExportAddress(dset, devAiEDTCL_UP900_12B);
@@ -355,6 +471,7 @@ epicsExportAddress(dset, devBoEDTCL_UP900_12B);
 epicsExportAddress(dset, devLiEDTCL_UP900_12B);
 epicsExportAddress(dset, devLoEDTCL_UP900_12B);
 epicsExportAddress(dset, devWfEDTCL_UP900_12B);
+epicsExportAddress(dset, devSoEDTCL_UP900_12B); 
 #endif
 
 typedef enum
@@ -404,6 +521,10 @@ typedef enum {
     UP900CL12B_WF_CurProjY,
     UP900CL12B_WF_HisProjX,
     UP900CL12B_WF_HisProjY,
+    UP900CL12B_SO_SaveImageDir,
+    UP900CL12B_BO_TriggerDAQ,
+    UP900CL12B_LO_NumImagesDAQ,
+    UP900CL12B_LI_DoneDAQ,
 } E_UP900CL12B_FUNC;
 
 static struct PARAM_MAP
@@ -439,7 +560,11 @@ static struct PARAM_MAP
     {"CurProjX",	EPICS_RTYPE_WF,	UP900CL12B_WF_CurProjX},
     {"CurProjY",	EPICS_RTYPE_WF,	UP900CL12B_WF_CurProjY},
     {"HisProjX",	EPICS_RTYPE_WF,	UP900CL12B_WF_HisProjX},
-    {"HisProjY",	EPICS_RTYPE_WF,	UP900CL12B_WF_HisProjY}
+    {"HisProjY",	EPICS_RTYPE_WF,	UP900CL12B_WF_HisProjY},
+    {"SaveImageDir",    EPICS_RTYPE_SO, UP900CL12B_SO_SaveImageDir},
+    {"TriggerDAQ",      EPICS_RTYPE_BO, UP900CL12B_BO_TriggerDAQ},
+    {"NumImagesDAQ",    EPICS_RTYPE_LO, UP900CL12B_LO_NumImagesDAQ},
+    {"DoneDAQ",    EPICS_RTYPE_LI, UP900CL12B_LI_DoneDAQ}
 };
 #define N_PARAM_MAP (sizeof(param_map)/sizeof(struct PARAM_MAP))
 
@@ -485,7 +610,7 @@ static int UP900CL12B_DevData_Init(dbCommon * precord, E_EPICS_RTYPE rtype, char
     pCamera = (UP900CL12B_CAMERA *)devCameraFindByName(devname, CAMERA_MODEL_NAME);
     if(pCamera == NULL)
     {
-        errlogPrintf("Can't find %s camera [%s] for record [%s]!\n", CAMERA_MODEL_NAME, devname, precord->name);
+      errlogPrintf("Can't find %s camera [%s] for record [%s] (param=%s)!\n", CAMERA_MODEL_NAME, devname, precord->name, param);
         return -1;
     }
 
@@ -600,6 +725,11 @@ static long init_bo( struct boRecord * pbo)
         pbo->udf = FALSE;
         pbo->stat = pbo->sevr = NO_ALARM;
         break;
+    case UP900CL12B_BO_TriggerDAQ:
+      pbo->rval = pCamera->triggerDAQ;
+        pbo->udf = FALSE;
+        pbo->stat = pbo->sevr = NO_ALARM;
+        break;
     default:
         break;
     }
@@ -620,6 +750,15 @@ static long write_bo(struct boRecord * pbo)
     {
     case UP900CL12B_BO_SaveImage:
         pCamera->saveImage = pbo->rval;
+        break;
+    case UP900CL12B_BO_TriggerDAQ:
+/*         pCamera->saveImage = pbo->rval; */
+      if (pCamera->triggerDAQ == 0) {
+	pCamera->doneDAQ = DAQ_ACQUIRING_IMAGES;
+  	scanIoRequest(pCamera->ioscanpvt);
+	printf("STATUS=%d\n",pCamera->doneDAQ);
+      }
+      pCamera->triggerDAQ = 1;
         break;
     default:
         return -1;
@@ -650,6 +789,28 @@ static long init_li( struct longinRecord * pli)
 
     return 0;
 }
+
+static long get_li_ioinfo(int cmd, struct dbCommon *precord, IOSCANPVT *ppvt) {
+    UP900CL12B_DEVDATA * pdevdata;
+    UP900CL12B_CAMERA * pCamera;
+
+    if(!(precord->dpvt)) return -1;
+
+    pdevdata = (UP900CL12B_DEVDATA *)(precord->dpvt);
+    pCamera = pdevdata->pCamera;
+
+    switch(pdevdata->function)
+    {
+    case UP900CL12B_LI_DoneDAQ:
+      *ppvt = pCamera->ioscanpvt;
+      break;
+    default:
+        return -1;
+    }
+
+    return 0;
+}
+
 
 static long read_li(struct longinRecord * pli)
 {
@@ -688,6 +849,9 @@ static long read_li(struct longinRecord * pli)
     case UP900CL12B_LI_NumPixelsY:
         pli->val = pCamera->nPixelsY;
         break;
+    case UP900CL12B_LI_DoneDAQ:
+      pli->val = pCamera->doneDAQ;
+      break;
     default:
         return -1;
     }
@@ -758,6 +922,13 @@ static long init_lo( struct longoutRecord * plo)
         plo->udf = FALSE;
         plo->stat = plo->sevr = NO_ALARM;
         break;
+    case UP900CL12B_LO_NumImagesDAQ:
+        epicsMutexLock(pCamera->mutexLock);
+        plo->val = pCamera->numImagesDAQ;
+        epicsMutexUnlock(pCamera->mutexLock);
+        plo->udf = FALSE;
+        plo->stat = plo->sevr = NO_ALARM;
+        break;
     default:
         break;
     }
@@ -818,6 +989,17 @@ static long write_lo(struct longoutRecord * plo)
             pCamera->nPixelsY = plo->val;
         
         plo->val = pCamera->nPixelsY;
+        break;
+    case UP900CL12B_LO_NumImagesDAQ:
+        if(plo->val < 1)
+	  pCamera->numImagesDAQ = 1;
+        else if(plo->val > NUM_OF_FRAMES)
+	  pCamera->numImagesDAQ = 100;
+        else
+            pCamera->numImagesDAQ = plo->val;
+        
+        plo->val = pCamera->numImagesDAQ;
+	printf("Number of images %d\n", plo->val);
         break;
     default:
         return -1;
@@ -1057,6 +1239,79 @@ static long read_wf(struct waveformRecord * pwf)
     pwf->nord=wflen;
     pwf->udf=FALSE;
     return 0;
+}
+
+/********* stringout record *****************/
+static long init_so(struct stringoutRecord *pso)
+{
+    UP900CL12B_DEVDATA * pdevdata;
+    UP900CL12B_CAMERA * pCamera;
+
+    pso->dpvt = NULL;
+
+    if (pso->out.type!=INST_IO)
+    {
+        recGblRecordError(S_db_badField, (void *)pso, "devBoEDTCL_UP900_12B Init_record, Illegal OUT");
+        pso->pact=TRUE;
+        return (S_db_badField);
+    }
+
+    if( UP900CL12B_DevData_Init((dbCommon *)pso, EPICS_RTYPE_SO, pso->out.value.instio.string) != 0 )
+    {
+        errlogPrintf("Fail to init devdata for record %s!\n", pso->name);
+        recGblRecordError(S_db_badField, (void *) pso, "Init devdata Error");
+        pso->pact = TRUE;
+        return (S_db_badField);
+    }
+
+    pdevdata = (UP900CL12B_DEVDATA *)(pso->dpvt);
+    pCamera = pdevdata->pCamera;
+
+    switch(pdevdata->function)
+    {
+    case UP900CL12B_SO_SaveImageDir:
+      strcpy(pso->val, "unknown");
+      pso->udf = FALSE;
+      pso->stat = pso->sevr = NO_ALARM;
+      break;
+    default:
+        break;
+    }
+    return 0;
+}
+
+static long write_so(struct stringoutRecord *pso)
+{
+  UP900CL12B_DEVDATA * pdevdata;
+  UP900CL12B_CAMERA * pCamera;
+
+  if(!(pso->dpvt)) {
+    return -1;
+  }
+  
+  pdevdata = (UP900CL12B_DEVDATA *)(pso->dpvt);
+  pCamera = pdevdata->pCamera;
+  
+  struct stat stat_buf;
+
+  switch(pdevdata->function)
+    {
+    case UP900CL12B_SO_SaveImageDir:
+      strncpy(pCamera->saveImageDir, pso->val, 40);
+      if (stat(pCamera->saveImageDir, &stat_buf) != 0) {
+	printf("ERROR: failed to stat() on %s\n", pCamera->saveImageDir);
+	return -1;
+      }
+      if (!S_ISDIR(stat_buf.st_mode)) {
+	printf("ERROR: %s is not a valid directory\n", pCamera->saveImageDir);
+	return -1;
+      }	
+      break;
+    default:
+      return -1;
+    }
+  
+  return 0;
 }
 
 /*============================================*/
