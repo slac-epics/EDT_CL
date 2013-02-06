@@ -33,14 +33,40 @@ record(bo, "$(user):TRIGGER_DAQ")
     field(DTYP, "EDTCL_UP900_12B")
     field(OUT,  "@$(CAMERA):TriggerDAQ")
     field(SCAN, "Event")
+    field(ZNAM, "Disabled")
+    field(ONAM, "Enabled")
     field(EVNT, "16")
+    field(FLNK, "$(user):TRIGGER_DAQ_CALCOUT")
 }
 
-record(longin, "$(user):DONE_DAQ")
+record(calcout, "$(user):TRIGGER_DAQ_CALCOUT") {
+    field(OUT, "$(user):TRIGGER_DAQ_CNT PP")
+    field(INPA, "$(user):STATUS_DAQ")
+    field(CALC, "A")
+    field(OOPT, "Transition To Non-zero")
+}
+
+record(calc, "$(user):TRIGGER_DAQ_CNT") {
+  field(DESC, "Count")
+  field(FLNK, "$(user):TRIGGER_DAQ_TS")
+  field(CALC, "A + 1")
+  field(INPA, "$(user):TRIGGER_DAQ_CNT.VAL")
+  field(EGU, "each")
+  info(autosaveFields, "VAL")
+}
+
+record(stringin, "$(user):TRIGGER_DAQ_TS") {
+  field(DESC, "time stamp")
+  field(DTYP, "Soft Timestamp")
+  field(INP, "@%m/%d/%Y %H:%M:%S")
+  info(autosaveFields, "VAL")
+}
+
+record(longin, "$(user):STATUS_DAQ")
 {
-  field(DESC, "Image DAQ finished")
+  field(DESC, "Image DAQ status")
   field(DTYP, "EDTCL_UP900_12B")
-  field(INP,  "@$(CAMERA):DoneDAQ")
+  field(INP,  "@$(CAMERA):StatusDAQ")
   field(PINI, "YES")
   field(EGU,  "done")
   field(SCAN, "I/O Intr")

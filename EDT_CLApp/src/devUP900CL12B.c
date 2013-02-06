@@ -102,6 +102,8 @@ typedef struct IMAGE_BUF
     /* We might add ROI info here when we support HW ROI */
 } IMAGE_BUF;
 
+IMAGE_BUF		IOC_historyBuf[NUM_OF_FRAMES];
+
 /* UP900CL-12B operation data structure defination */
 /* The first fourteen elements must be same cross all types of cameras, same of COMMON_CAMERA */
 typedef struct UP900CL12B_CAMERA
@@ -144,7 +146,8 @@ typedef struct UP900CL12B_CAMERA
     int			pingpongFlag;	/* ping-pong buffer flag, indicate which buffer can be written */
 
     char		* phistoryBlock;	/* The image history buffer need big memory, we just malloc a big block */
-    IMAGE_BUF		historyBuf[NUM_OF_FRAMES];
+/*     IMAGE_BUF		historyBuf[NUM_OF_FRAMES]; */
+  IMAGE_BUF		*historyBuf;    /* Buffer is shared among cameras in the same IOC */
     unsigned int	historyBufIndex;	/* Indicate which history buffer is ready to be written */
     unsigned int	historyBufFull;
     epicsMutexId	historyBufMutexLock;	/* history buffer mutex semaphore */
@@ -155,7 +158,7 @@ typedef struct UP900CL12B_CAMERA
     char                saveImageDir[50];
     int                 triggerDAQ; /* Set by the TRIGGER_DAQ PV when starting acquisition for saving to disk */
     int                 numImagesDAQ; /* Number of images to be saved to disk (max is NUM_OF_FRAMES) */
-    int                 doneDAQ; /* Signaled when image DAQ is complete, i.e. saved to disk */
+    int                 statusDAQ; /* Current DAQ status */
     IOSCANPVT           ioscanpvt;
 } UP900CL12B_CAMERA;
 
@@ -188,7 +191,7 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
 
   time_t a, b;
   time_t t = time(0);
-  printf("Start Time: %s", ctime(&t));
+/*   printf("Start Time: %s", ctime(&t)); */
 
   a = time(0);
   int image_index = 0;
@@ -200,21 +203,12 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
 	    pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
 	    pCamera->historyBuf[image_index].timeStamp.nsec);
     
-/*     printf("Saving image file %s...", file_name); */
     FILE *image_file = fopen(file_name, "w");
     if (image_file == NULL) {
       printf("Error opening file %s\n", file_name);
       return -1;
     }
-    /*
-    unsigned short int max_val = 0;
-    int val_index = 0;
-    for (;val_index < pCamera->numOfCol * pCamera->numOfRow; val_index++) {
-      if (pCamera->historyBuf[image_index].pImage[val_index] > max_val) {
-	max_val = pCamera->historyBuf[image_index].pImage[val_index];
-      }
-    }
-    */
+
     now = pCamera->historyBuf[image_index].timeStamp.secPastEpoch;
     timeinfo = localtime(&now);
     strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo);
@@ -269,13 +263,10 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
         /* Got a new frame */
         pCamera->frameCounts++;
 
-/* 	if (saveImage != pCamera->saveImage) printf("Changing saveImage from %d to %d\n", */
-/* 						    saveImage, pCamera->saveImage); */
-	if (saveImage != pCamera->triggerDAQ) printf("Changing triggerDAQ from %d to %d\n",
-						     saveImage, pCamera->triggerDAQ);
-
-	/*         saveImage = pCamera->saveImage;*/	/* copy once. So no worry about external change */
-        saveImage = pCamera->triggerDAQ;	/* copy once. So no worry about external change */
+	saveImage = 0;
+	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) {
+	  saveImage = 1;
+	}
 
         if(saveImage)
         {/* New frame goes into history buffer */
@@ -300,23 +291,22 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
         /* Calculate projiection, FWHM, centroid ... */
 
 /*         if(saveImage) */
-	if (pCamera->triggerDAQ)
+/* 	if (pCamera->triggerDAQ) */
+	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) 
         {/* New frame goes into history buffer */
             epicsMutexLock(pCamera->historyBufMutexLock);
             pCamera->historyBufIndex++;
 
             if(pCamera->historyBufIndex >= pCamera->numImagesDAQ)
             {
-	      pCamera->doneDAQ = DAQ_SAVING_IMAGES;
-	      printf("STATUS=%d\n",pCamera->doneDAQ);
+	      pCamera->statusDAQ = DAQ_SAVING_IMAGES;
   	      scanIoRequest(pCamera->ioscanpvt);
 	      UP900CL12B_FlushBufferToDisk(pCamera->numImagesDAQ, pCamera);
 	      pCamera->historyBufIndex = 0;
 	      pCamera->historyBufFull = 1;
-/* 	      pCamera->saveImage = 0; */
 	      pCamera->triggerDAQ = 0;
-	      pCamera->doneDAQ = DAQ_READY;
-	      printf("STATUS=%d\n",pCamera->doneDAQ);
+	      pCamera->statusDAQ = DAQ_READY;
+	      pCamera->saveImage = 0; /* go back to the ping-pong buffer */
   	      scanIoRequest(pCamera->ioscanpvt);
             }
             epicsMutexUnlock(pCamera->historyBufMutexLock);
@@ -397,6 +387,7 @@ int UP900CL12B_Init(char * name, int unit, int channel)
     pCamera->pingpongFlag = 0;
 
     /* Initialize history buffer */
+    pCamera->historyBuf = &IOC_historyBuf;
     if(UP900CL12B_DEV_DEBUG) printf("calloc %fMB memory\n", NUM_OF_FRAMES * pCamera->imageSize/1.0e6);
     pCamera->phistoryBlock = (char *)callocMustSucceed(NUM_OF_FRAMES, pCamera->imageSize, "Allocate huge his buf");
     for(loop=0; loop<NUM_OF_FRAMES; loop++)
@@ -424,6 +415,7 @@ int UP900CL12B_Init(char * name, int unit, int channel)
 
     pCamera->mutexLock = epicsMutexMustCreate();
 
+    pCamera->statusDAQ = DAQ_READY;
     scanIoInit(&(pCamera->ioscanpvt));
 
     /* We successfully allocate all resource */
@@ -524,7 +516,7 @@ typedef enum {
     UP900CL12B_SO_SaveImageDir,
     UP900CL12B_BO_TriggerDAQ,
     UP900CL12B_LO_NumImagesDAQ,
-    UP900CL12B_LI_DoneDAQ,
+    UP900CL12B_LI_StatusDAQ,
 } E_UP900CL12B_FUNC;
 
 static struct PARAM_MAP
@@ -564,7 +556,7 @@ static struct PARAM_MAP
     {"SaveImageDir",    EPICS_RTYPE_SO, UP900CL12B_SO_SaveImageDir},
     {"TriggerDAQ",      EPICS_RTYPE_BO, UP900CL12B_BO_TriggerDAQ},
     {"NumImagesDAQ",    EPICS_RTYPE_LO, UP900CL12B_LO_NumImagesDAQ},
-    {"DoneDAQ",    EPICS_RTYPE_LI, UP900CL12B_LI_DoneDAQ}
+    {"StatusDAQ",    EPICS_RTYPE_LI, UP900CL12B_LI_StatusDAQ}
 };
 #define N_PARAM_MAP (sizeof(param_map)/sizeof(struct PARAM_MAP))
 
@@ -726,6 +718,7 @@ static long init_bo( struct boRecord * pbo)
         pbo->stat = pbo->sevr = NO_ALARM;
         break;
     case UP900CL12B_BO_TriggerDAQ:
+      pCamera->triggerDAQ = 0;
       pbo->rval = pCamera->triggerDAQ;
         pbo->udf = FALSE;
         pbo->stat = pbo->sevr = NO_ALARM;
@@ -752,14 +745,33 @@ static long write_bo(struct boRecord * pbo)
         pCamera->saveImage = pbo->rval;
         break;
     case UP900CL12B_BO_TriggerDAQ:
-/*         pCamera->saveImage = pbo->rval; */
-      if (pCamera->triggerDAQ == 0) {
-	pCamera->doneDAQ = DAQ_ACQUIRING_IMAGES;
-  	scanIoRequest(pCamera->ioscanpvt);
-	printf("STATUS=%d\n",pCamera->doneDAQ);
+      /** If TRIGGER_DAQ is enabled */
+      if (pbo->rval == 1) {
+	/**
+	 * Check if DAQ has finished -> triggerDAQ is set to 0 when done
+	 * Signal in the STATUS_DAQ PV that system is ready for another DAQ
+	 */
+	if (pCamera->triggerDAQ == 0) {
+	  pCamera->statusDAQ = DAQ_ACQUIRING_IMAGES;
+	  pCamera->saveImage = 1; /* enable saving to the image buffer instead of the ping-pong */
+	  scanIoRequest(pCamera->ioscanpvt);
+	  printf("Got trigger - DAQ Starts now. STATUS=%d\n",pCamera->statusDAQ);
+	}
+	/** If not done yet, keep the trigger enabled */
+	pCamera->triggerDAQ = 1;
       }
-      pCamera->triggerDAQ = 1;
-        break;
+      /**
+       * If TRIGGER_DAQ is disabled (0), then check if last DAQ finished,
+       * and set triggerDAQ to zero again (this is not really needed)
+       */
+      else {
+	if (pCamera->statusDAQ == DAQ_READY) {
+	  pCamera->triggerDAQ = 0;
+	  pCamera->saveImage = 0;
+	}
+      }
+
+      break;
     default:
         return -1;
     }
@@ -801,7 +813,7 @@ static long get_li_ioinfo(int cmd, struct dbCommon *precord, IOSCANPVT *ppvt) {
 
     switch(pdevdata->function)
     {
-    case UP900CL12B_LI_DoneDAQ:
+    case UP900CL12B_LI_StatusDAQ:
       *ppvt = pCamera->ioscanpvt;
       break;
     default:
@@ -849,8 +861,8 @@ static long read_li(struct longinRecord * pli)
     case UP900CL12B_LI_NumPixelsY:
         pli->val = pCamera->nPixelsY;
         break;
-    case UP900CL12B_LI_DoneDAQ:
-      pli->val = pCamera->doneDAQ;
+    case UP900CL12B_LI_StatusDAQ:
+      pli->val = pCamera->statusDAQ;
       break;
     default:
         return -1;
