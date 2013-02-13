@@ -102,7 +102,7 @@ typedef struct IMAGE_BUF
     /* We might add ROI info here when we support HW ROI */
 } IMAGE_BUF;
 
-IMAGE_BUF		IOC_historyBuf[NUM_OF_FRAMES];
+char *SHARED_HISTORY_BLOCK = 0; /* Holds history buffer for ALL cameras */
 
 /* UP900CL-12B operation data structure defination */
 /* The first fourteen elements must be same cross all types of cameras, same of COMMON_CAMERA */
@@ -146,8 +146,7 @@ typedef struct UP900CL12B_CAMERA
     int			pingpongFlag;	/* ping-pong buffer flag, indicate which buffer can be written */
 
     char		* phistoryBlock;	/* The image history buffer need big memory, we just malloc a big block */
-/*     IMAGE_BUF		historyBuf[NUM_OF_FRAMES]; */
-  IMAGE_BUF		*historyBuf;    /* Buffer is shared among cameras in the same IOC */
+  IMAGE_BUF		historyBuf[NUM_OF_FRAMES];
     unsigned int	historyBufIndex;	/* Indicate which history buffer is ready to be written */
     unsigned int	historyBufFull;
     epicsMutexId	historyBufMutexLock;	/* history buffer mutex semaphore */
@@ -267,6 +266,9 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) {
 	  saveImage = 1;
 	}
+	else {
+	  saveImage = pCamera->saveImage;
+	}
 
         if(saveImage)
         {/* New frame goes into history buffer */
@@ -311,7 +313,18 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
             }
             epicsMutexUnlock(pCamera->historyBufMutexLock);
         }
-        else
+        else if(saveImage)
+        {/* New frame goes into history buffer */
+            epicsMutexLock(pCamera->historyBufMutexLock);
+            pCamera->historyBufIndex++;
+            if(pCamera->historyBufIndex >= NUM_OF_FRAMES)
+            {
+                pCamera->historyBufIndex = 0;
+                pCamera->historyBufFull = 1;
+            }
+            epicsMutexUnlock(pCamera->historyBufMutexLock);
+        }
+	else
         {/* New frame goes into ping-pong buffer */
             pCamera->pingpongFlag = 1 - pCamera->pingpongFlag;
         }
@@ -387,9 +400,20 @@ int UP900CL12B_Init(char * name, int unit, int channel)
     pCamera->pingpongFlag = 0;
 
     /* Initialize history buffer */
-    pCamera->historyBuf = &IOC_historyBuf;
-    if(UP900CL12B_DEV_DEBUG) printf("calloc %fMB memory\n", NUM_OF_FRAMES * pCamera->imageSize/1.0e6);
-    pCamera->phistoryBlock = (char *)callocMustSucceed(NUM_OF_FRAMES, pCamera->imageSize, "Allocate huge his buf");
+    if(UP900CL12B_DEV_DEBUG) {
+      printf("calloc %fMB memory\n", NUM_OF_FRAMES * pCamera->imageSize/1.0e6);
+    }
+
+    if (SHARED_HISTORY_BLOCK == 0) {
+      SHARED_HISTORY_BLOCK = (char *)callocMustSucceed(NUM_OF_FRAMES,
+						       pCamera->imageSize,
+						       "Allocate huge his buf (ONCE)");
+    }
+    pCamera->phistoryBlock = SHARED_HISTORY_BLOCK;
+
+/*     pCamera->phistoryBlock = (char *)callocMustSucceed(NUM_OF_FRAMES, */
+/* 						       pCamera->imageSize, */
+/* 						       "Allocate huge his buf"); */
     for(loop=0; loop<NUM_OF_FRAMES; loop++)
     {
         bzero((char *)&(pCamera->historyBuf[loop].timeStamp), sizeof(epicsTimeStamp));

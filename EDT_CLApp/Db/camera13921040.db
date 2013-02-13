@@ -25,6 +25,7 @@ record(longout, "$(user):NUM_IMAGES_DAQ")
   field(DRVH, "100")
   field(LOPR, "1")
   field(DRVL, "1")
+  info(autosaveFields, "VAL")
 }
 
 record(bo, "$(user):TRIGGER_DAQ")
@@ -40,7 +41,7 @@ record(bo, "$(user):TRIGGER_DAQ")
 }
 
 record(calcout, "$(user):TRIGGER_DAQ_CALCOUT") {
-    field(OUT, "$(user):TRIGGER_DAQ_CNT PP")
+    field(OUT, "$(user):TRIGGER_DAQ_CNT.PROC PP")
     field(INPA, "$(user):STATUS_DAQ")
     field(CALC, "A")
     field(OOPT, "Transition To Non-zero")
@@ -78,6 +79,7 @@ record(stringout, "$(user):SAVE_IMG_DIR")
   field(DESC, "saveImageDir")
   field(DTYP, "EDTCL_UP900_12B")
   field(OUT,  "@$(CAMERA):SaveImageDir")
+  info(autosaveFields, "VAL")
 }
 
 record(longin, "$(user):N_OF_COL") {
