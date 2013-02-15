@@ -1,3 +1,10 @@
+record(stringin, "$(user):NAME") {
+  field(DESC, "Camera Name")
+  field(VAL, "$(CAMERA)")
+  field(PINI, "YES")
+  info(autosaveFields, "VAL")
+}
+
 record(ai, "$(user):RESOLUTION") {
   field(DESC, "resolution")
   field(PINI, "YES")
@@ -28,6 +35,22 @@ record(longout, "$(user):NUM_IMAGES_DAQ")
   info(autosaveFields, "VAL")
 }
 
+record(bo, "$(user):ENABLE_DAQ")
+{
+    field(DESC, "Enable/Disable DAQ")
+    field(SCAN, "0.1 second")
+    field(ZNAM, "Disabled")
+    field(ONAM, "Enabled")
+    field(FLNK, "$(user):ENABLE_DAQ_CALCOUT")
+}
+
+record(calcout, "$(user):ENABLE_DAQ_CALCOUT") {
+    field(OUT, "$(user):TRIGGER_DAQ PP")
+    field(INPA, "$(user):ENABLE_DAQ")
+    field(CALC, "A")
+    field(OOPT, "On Change")
+}
+
 record(bo, "$(user):TRIGGER_DAQ")
 {
     field(DESC, "triggerDAQ")
@@ -36,7 +59,7 @@ record(bo, "$(user):TRIGGER_DAQ")
     field(SCAN, "Event")
     field(ZNAM, "Disabled")
     field(ONAM, "Enabled")
-    field(EVNT, "16")
+    field(EVNT, "214")
     field(FLNK, "$(user):TRIGGER_DAQ_CALCOUT")
 }
 

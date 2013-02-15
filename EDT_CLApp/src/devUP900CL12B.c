@@ -188,6 +188,11 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
   int images = pCamera->historyBufIndex;
   char file_name[300];
 
+  if (images == 0) {
+    printf("No images were recorded, can't save files.\n");
+    return -1;
+  }
+
   time_t a, b;
   time_t t = time(0);
 /*   printf("Start Time: %s", ctime(&t)); */
@@ -234,6 +239,10 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
   printf("[%s] Done saving collected images to disk (%s).\n", timestr, pCamera->saveImageDir);
 
   float rate = image_size * num_images;
+  if (b - a == 0) {
+    printf("ERROR: Apparently no files were saved, please check configuration.\n");
+    return -1;
+  }
   rate /= (b - a);
   rate /= 1024;
   rate /= 1024;
@@ -245,6 +254,7 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
 static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 {
     int loop, saveImage;
+    int oldSaveImage = 0;
     unsigned short int *pNewFrame;
     IMAGE_BUF * pImageBuf;
 
@@ -263,14 +273,12 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
         pCamera->frameCounts++;
 
 	saveImage = 0;
+	oldSaveImage = pCamera->saveImage;
 	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) {
 	  saveImage = 1;
 	}
-	else {
-	  saveImage = pCamera->saveImage;
-	}
 
-        if(saveImage)
+        if(saveImage || oldSaveImage)
         {/* New frame goes into history buffer */
             pImageBuf = pCamera->historyBuf + pCamera->historyBufIndex;
         }
@@ -298,7 +306,7 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
         {/* New frame goes into history buffer */
             epicsMutexLock(pCamera->historyBufMutexLock);
             pCamera->historyBufIndex++;
-
+	    
             if(pCamera->historyBufIndex >= pCamera->numImagesDAQ)
             {
 	      pCamera->statusDAQ = DAQ_SAVING_IMAGES;
@@ -308,12 +316,12 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 	      pCamera->historyBufFull = 1;
 	      pCamera->triggerDAQ = 0;
 	      pCamera->statusDAQ = DAQ_READY;
-	      pCamera->saveImage = 0; /* go back to the ping-pong buffer */
+	      /*pCamera->saveImage = 0;*/ /* go back to the ping-pong buffer */
   	      scanIoRequest(pCamera->ioscanpvt);
             }
             epicsMutexUnlock(pCamera->historyBufMutexLock);
         }
-        else if(saveImage)
+        else if(oldSaveImage)
         {/* New frame goes into history buffer */
             epicsMutexLock(pCamera->historyBufMutexLock);
             pCamera->historyBufIndex++;
@@ -779,7 +787,7 @@ static long write_bo(struct boRecord * pbo)
 	  pCamera->statusDAQ = DAQ_ACQUIRING_IMAGES;
 	  pCamera->saveImage = 1; /* enable saving to the image buffer instead of the ping-pong */
 	  scanIoRequest(pCamera->ioscanpvt);
-	  printf("Got trigger - DAQ Starts now. STATUS=%d\n",pCamera->statusDAQ);
+/* 	  printf("Got trigger - DAQ Starts now. STATUS=%d\n",pCamera->statusDAQ); */
 	}
 	/** If not done yet, keep the trigger enabled */
 	pCamera->triggerDAQ = 1;
