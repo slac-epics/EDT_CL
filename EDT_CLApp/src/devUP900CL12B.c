@@ -74,7 +74,7 @@ int UP900CL12B_DEV_DEBUG = 1;
 
 #define	NUM_OF_FRAMES	100	/* number of frames in circular buffer */
 
-#define IMAGE_TS_EVT_NUM 159	/* upon which event we timestamp image */
+#define IMAGE_TS_EVT_NUM 53	/* upon which event we timestamp image */
 
 #ifdef vxWorks
 #define CAMERA_THREAD_PRIORITY	(10)
@@ -206,6 +206,19 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
  	    pCamera->pCameraName,
 	    pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
 	    pCamera->historyBuf[image_index].timeStamp.nsec);
+
+    if (image_index > 0) {
+      if ((pCamera->historyBuf[image_index].timeStamp.nsec == 
+	   pCamera->historyBuf[image_index - 1].timeStamp.nsec) &&
+	  (pCamera->historyBuf[image_index].timeStamp.secPastEpoch == 
+	   pCamera->historyBuf[image_index - 1].timeStamp.secPastEpoch)) {
+	sprintf(file_name, "%s/%s-%d-%d-2.pgm",
+		pCamera->saveImageDir,
+		pCamera->pCameraName,
+		pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
+		pCamera->historyBuf[image_index].timeStamp.nsec);
+      }
+    }
     
     FILE *image_file = fopen(file_name, "w");
     if (image_file == NULL) {
@@ -288,7 +301,7 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
         }
 
         /* Set time stamp even data is not usable */
-        epicsTimeGetEvent(&(pImageBuf->timeStamp), IMAGE_TS_EVT_NUM);
+	epicsTimeGetEvent(&(pImageBuf->timeStamp), IMAGE_TS_EVT_NUM);
 
         memcpy((void*)(pImageBuf->pImage), (void*)pNewFrame, pCamera->imageSize);
         /*swab( (void*)pNewFrame, (void*)(pImageBuf->pImage), pCamera->imageSize/sizeof(unsigned short int) );*/
@@ -305,15 +318,22 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) 
         {/* New frame goes into history buffer */
             epicsMutexLock(pCamera->historyBufMutexLock);
+	    if (pCamera->historyBufIndex == 0) {
+	      printf("First timestamp (%d %d)\n",
+		     pCamera->historyBuf[0].timeStamp.secPastEpoch,
+		     pCamera->historyBuf[0].timeStamp.nsec);
+	    }
+	
             pCamera->historyBufIndex++;
 	    
             if(pCamera->historyBufIndex >= pCamera->numImagesDAQ)
             {
+	      pCamera->historyBufFull = 1;
 	      pCamera->statusDAQ = DAQ_SAVING_IMAGES;
   	      scanIoRequest(pCamera->ioscanpvt);
 	      UP900CL12B_FlushBufferToDisk(pCamera->numImagesDAQ, pCamera);
 	      pCamera->historyBufIndex = 0;
-	      pCamera->historyBufFull = 1;
+	      pCamera->historyBufFull = 0; /* "Clear" buffer for next DAQ cycle */
 	      pCamera->triggerDAQ = 0;
 	      pCamera->statusDAQ = DAQ_READY;
 	      /*pCamera->saveImage = 0;*/ /* go back to the ping-pong buffer */
@@ -784,10 +804,14 @@ static long write_bo(struct boRecord * pbo)
 	 * Signal in the STATUS_DAQ PV that system is ready for another DAQ
 	 */
 	if (pCamera->triggerDAQ == 0) {
+	  epicsMutexLock(pCamera->historyBufMutexLock);
+	  pCamera->historyBufIndex = 0;
+	  pCamera->historyBufFull = 0; /* "Clear" buffer for next DAQ cycle */
 	  pCamera->statusDAQ = DAQ_ACQUIRING_IMAGES;
 	  pCamera->saveImage = 1; /* enable saving to the image buffer instead of the ping-pong */
 	  scanIoRequest(pCamera->ioscanpvt);
 /* 	  printf("Got trigger - DAQ Starts now. STATUS=%d\n",pCamera->statusDAQ); */
+	  epicsMutexUnlock(pCamera->historyBufMutexLock);
 	}
 	/** If not done yet, keep the trigger enabled */
 	pCamera->triggerDAQ = 1;
