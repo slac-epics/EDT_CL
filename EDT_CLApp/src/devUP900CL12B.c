@@ -79,7 +79,8 @@ int UP900CL12B_DEV_DEBUG = 1;
 #ifdef vxWorks
 #define CAMERA_THREAD_PRIORITY	(10)
 #else
-#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityMedium)
+/*#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityMedium)*/
+#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityHigh)
 #endif
 #define CAMERA_THREAD_STACK	(0x20000)
 
@@ -154,7 +155,7 @@ typedef struct UP900CL12B_CAMERA
     signed int		historyBufReadOffset;	/* The offset from the latest frame, starts from 0, must be 0 or negative number */
 
     epicsMutexId	mutexLock;	/*  general mutex semaphore */
-    char                saveImageDir[50];
+    char                saveImageDir[100];
     int                 triggerDAQ; /* Set by the TRIGGER_DAQ PV when starting acquisition for saving to disk */
     int                 numImagesDAQ; /* Number of images to be saved to disk (max is NUM_OF_FRAMES) */
     int                 statusDAQ; /* Current DAQ status */
@@ -173,17 +174,30 @@ unsigned int UP900_SHIFT_4BITS = 0;
 
 static char IMAGE_DIRECTORY[1024];
 
+
+#define LOWER_17_BIT_MASK       (0x0001FFFF)    /* (2^17)-1            */
+#define PULSEID(time)           ((time).nsec & LOWER_17_BIT_MASK)
+
+static uint64_t cg64()
+{
+struct timespec now;
+	clock_gettime( CLOCK_MONOTONIC, &now );
+	return  (uint64_t)now.tv_sec * (uint64_t)1000000 +  (uint64_t)now.tv_nsec/(uint64_t)1000;
+}
+
 static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCamera)
 {
   time_t now;
   struct tm *timeinfo;
   char timestr[30];
   size_t size;
+  uint64_t td;
+  uint32_t rval;
 
   time(&now);
   timeinfo = localtime(&now);
-  strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo);
-  printf("[%s] Saving collected images to disk (%s).\n", timestr, pCamera->saveImageDir);
+/*   strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo); */
+/*   printf("[%s] Saving collected images to disk (%s).\n", timestr, pCamera->saveImageDir); */
 
   int images = pCamera->historyBufIndex;
   char file_name[300];
@@ -200,31 +214,74 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
   a = time(0);
   int image_index = 0;
   int image_size = pCamera->numOfCol * pCamera->numOfRow * sizeof(unsigned short int);
+
+  td = cg64();
+  
+#define SINGLE_FILE 1
+  
+  FILE *image_file;
+
+  /** SINGLE FILE **/
+#ifdef SINGLE_FILE
+  sprintf(file_name, "%s/%s-%d-%d-%d.pgm",
+	  pCamera->saveImageDir,
+	  pCamera->pCameraName,
+	  pCamera->historyBuf[0].timeStamp.secPastEpoch,
+	  pCamera->historyBuf[0].timeStamp.nsec,
+	  PULSEID(pCamera->historyBuf[image_index].timeStamp));
+  
+  image_file = fopen(file_name, "w");
+  if (image_file == NULL) {
+    printf("Error opening file %s\n", file_name);
+    return -1;
+  }
+
+  FILE *pulseid_file;
+  sprintf(file_name, "%s/%s-%d-%d-%d.txt",
+	  pCamera->saveImageDir,
+	  pCamera->pCameraName,
+	  pCamera->historyBuf[0].timeStamp.secPastEpoch,
+	  pCamera->historyBuf[0].timeStamp.nsec,
+	  PULSEID(pCamera->historyBuf[image_index].timeStamp));
+  
+  pulseid_file = fopen(file_name, "w");
+  if (pulseid_file == NULL) {
+    printf("Error opening file %s\n", file_name);
+    return -1;
+  }
+  
+#endif
+
+  
   for (; image_index < num_images; image_index++) {
-    sprintf(file_name, "%s/%s-%d-%d.pgm",
+#ifndef SINGLE_FILE
+    sprintf(file_name, "%s/%s-%d-%d-%d.pgm",
 	    pCamera->saveImageDir,
  	    pCamera->pCameraName,
 	    pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
-	    pCamera->historyBuf[image_index].timeStamp.nsec);
+	    pCamera->historyBuf[image_index].timeStamp.nsec,
+	    PULSEID(pCamera->historyBuf[image_index].timeStamp));
 
     if (image_index > 0) {
       if ((pCamera->historyBuf[image_index].timeStamp.nsec == 
 	   pCamera->historyBuf[image_index - 1].timeStamp.nsec) &&
 	  (pCamera->historyBuf[image_index].timeStamp.secPastEpoch == 
 	   pCamera->historyBuf[image_index - 1].timeStamp.secPastEpoch)) {
-	sprintf(file_name, "%s/%s-%d-%d-2.pgm",
+	sprintf(file_name, "%s/%s-%d-%d-%d.2.pgm",
 		pCamera->saveImageDir,
 		pCamera->pCameraName,
 		pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
-		pCamera->historyBuf[image_index].timeStamp.nsec);
+		pCamera->historyBuf[image_index].timeStamp.nsec,
+		PULSEID(pCamera->historyBuf[image_index].timeStamp));
       }
     }
-    
-    FILE *image_file = fopen(file_name, "w");
+
+    image_file = fopen(file_name, "w");
     if (image_file == NULL) {
       printf("Error opening file %s\n", file_name);
       return -1;
     }
+#endif
 
     now = pCamera->historyBuf[image_index].timeStamp.secPastEpoch;
     timeinfo = localtime(&now);
@@ -233,23 +290,36 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
     fprintf(image_file, "P5\n");
     fprintf(image_file, "# Camera: %s\n", pCamera->pCameraName);
     fprintf(image_file, "# Date: %s\n", timestr );
-    fprintf(image_file, "# EVR timestamp: %d sec %d nsec\n", pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
+    fprintf(image_file, "# EVR timestamp: %d sec %d nsec\n",
+	    pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
 	    pCamera->historyBuf[image_index].timeStamp.nsec);
     fprintf(image_file, "# Sequence #%d\n", image_index);
     fprintf(image_file, "%d %d\n", pCamera->numOfCol, pCamera->numOfRow);
     fprintf(image_file, "65535\n");
+
+#ifdef SINGLE_FILE
+    fprintf(pulseid_file, "%d\n", PULSEID(pCamera->historyBuf[image_index].timeStamp));
+#endif 
     
     size = fwrite(pCamera->historyBuf[image_index].pImage, image_size, 1, image_file);
-    
+
+#ifndef SINGLE_FILE
     fclose(image_file);
-/*     printf(" done.\n"); */
+#endif
   }
+#ifdef SINGLE_FILE
+  fclose(image_file);
+  fclose(pulseid_file);
+#endif
+  td = cg64() - td;
+  rval = (uint32_t)td;
+
   b = time(0);
 
-  time(&now);
-  timeinfo = localtime(&now);
-  strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo);
-  printf("[%s] Done saving collected images to disk (%s).\n", timestr, pCamera->saveImageDir);
+/*   time(&now); */
+/*   timeinfo = localtime(&now); */
+/*   strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo); */
+/*   printf("[%s] Done saving collected images to disk (%s).\n", timestr, pCamera->saveImageDir); */
 
   float rate = image_size * num_images;
   if (b - a == 0) {
@@ -259,7 +329,7 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
   rate /= (b - a);
   rate /= 1024;
   rate /= 1024;
-  printf("Rate: %f MBytes/second\n", rate);
+  printf("Rate: %f MB/s; Time: %d sec; %d usec\n", rate, b - a, rval);
   
   return 0;
 }
@@ -285,6 +355,8 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
         /* Got a new frame */
         pCamera->frameCounts++;
 
+	epicsMutexLock(pCamera->historyBufMutexLock);
+
 	saveImage = 0;
 	oldSaveImage = pCamera->saveImage;
 	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) {
@@ -294,17 +366,26 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
         if(saveImage || oldSaveImage)
         {/* New frame goes into history buffer */
             pImageBuf = pCamera->historyBuf + pCamera->historyBufIndex;
+/* 	    printf("Buffer index=%d (saveImage=%d oldSaveImage=%d\n", */
+/* 		   pCamera->historyBufIndex, saveImage, oldSaveImage); */
         }
         else
         {/* New frame goes into ping-pong buffer */
             pImageBuf = pCamera->pingpongBuf + pCamera->pingpongFlag;
         }
 
+/* 	epicsMutexUnlock(pCamera->historyBufMutexLock); */
+
         /* Set time stamp even data is not usable */
 	epicsTimeGetEvent(&(pImageBuf->timeStamp), IMAGE_TS_EVT_NUM);
+/* 	if (saveImage || oldSaveImage) { */
+/* 	  printf("TS %d %d index=%d\n", */
+/* 		 pImageBuf->timeStamp.secPastEpoch, */
+/* 		 pImageBuf->timeStamp.nsec, */
+/* 		 pCamera->historyBufIndex); */
+/* 	} */
 
         memcpy((void*)(pImageBuf->pImage), (void*)pNewFrame, pCamera->imageSize);
-        /*swab( (void*)pNewFrame, (void*)(pImageBuf->pImage), pCamera->imageSize/sizeof(unsigned short int) );*/
 
         if(UP900_SHIFT_4BITS > 0)
         {
@@ -313,16 +394,14 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 
         /* Calculate projiection, FWHM, centroid ... */
 
-/*         if(saveImage) */
-/* 	if (pCamera->triggerDAQ) */
 	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) 
         {/* New frame goes into history buffer */
-            epicsMutexLock(pCamera->historyBufMutexLock);
-	    if (pCamera->historyBufIndex == 0) {
-	      printf("First timestamp (%d %d)\n",
-		     pCamera->historyBuf[0].timeStamp.secPastEpoch,
-		     pCamera->historyBuf[0].timeStamp.nsec);
-	    }
+/*             epicsMutexLock(pCamera->historyBufMutexLock); */
+/* 	    if (pCamera->historyBufIndex == 0) { */
+/* 	      printf("First timestamp (%d %d)\n", */
+/* 		     pCamera->historyBuf[0].timeStamp.secPastEpoch, */
+/* 		     pCamera->historyBuf[0].timeStamp.nsec); */
+/* 	    } */
 	
             pCamera->historyBufIndex++;
 	    
@@ -339,23 +418,24 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 	      /*pCamera->saveImage = 0;*/ /* go back to the ping-pong buffer */
   	      scanIoRequest(pCamera->ioscanpvt);
             }
-            epicsMutexUnlock(pCamera->historyBufMutexLock);
+/*             epicsMutexUnlock(pCamera->historyBufMutexLock); */
         }
         else if(oldSaveImage)
         {/* New frame goes into history buffer */
-            epicsMutexLock(pCamera->historyBufMutexLock);
+/*             epicsMutexLock(pCamera->historyBufMutexLock); */
             pCamera->historyBufIndex++;
             if(pCamera->historyBufIndex >= NUM_OF_FRAMES)
             {
                 pCamera->historyBufIndex = 0;
                 pCamera->historyBufFull = 1;
             }
-            epicsMutexUnlock(pCamera->historyBufMutexLock);
+/*             epicsMutexUnlock(pCamera->historyBufMutexLock); */
         }
 	else
         {/* New frame goes into ping-pong buffer */
             pCamera->pingpongFlag = 1 - pCamera->pingpongFlag;
         }
+	epicsMutexUnlock(pCamera->historyBufMutexLock);
     }
     return 0;
 }
@@ -808,7 +888,7 @@ static long write_bo(struct boRecord * pbo)
 	  pCamera->historyBufIndex = 0;
 	  pCamera->historyBufFull = 0; /* "Clear" buffer for next DAQ cycle */
 	  pCamera->statusDAQ = DAQ_ACQUIRING_IMAGES;
-	  pCamera->saveImage = 1; /* enable saving to the image buffer instead of the ping-pong */
+	  /*pCamera->saveImage = 1; *//* enable saving to the image buffer instead of the ping-pong */
 	  scanIoRequest(pCamera->ioscanpvt);
 /* 	  printf("Got trigger - DAQ Starts now. STATUS=%d\n",pCamera->statusDAQ); */
 	  epicsMutexUnlock(pCamera->historyBufMutexLock);
@@ -1366,6 +1446,11 @@ static long write_so(struct stringoutRecord *pso)
     {
     case UP900CL12B_SO_SaveImageDir:
       strncpy(pCamera->saveImageDir, pso->val, 40);
+      if(strncmp("FTP:", pCamera->saveImageDir, 4) == 0) {
+	sprintf(pCamera->saveImageDir, "/FTP/anonymous:pass/@172.27.72.30%s",&(pso->val[4]));
+      }
+/*       printf("Saving files to \"%s\"\n", pCamera->saveImageDir); */
+      /*
       if (stat(pCamera->saveImageDir, &stat_buf) != 0) {
 	printf("ERROR: failed to stat() on %s\n", pCamera->saveImageDir);
 	return -1;
@@ -1373,7 +1458,8 @@ static long write_so(struct stringoutRecord *pso)
       if (!S_ISDIR(stat_buf.st_mode)) {
 	printf("ERROR: %s is not a valid directory\n", pCamera->saveImageDir);
 	return -1;
-      }	
+      }
+      */
       break;
     default:
       return -1;
