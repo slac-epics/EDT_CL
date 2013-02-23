@@ -39,7 +39,7 @@ record(longout, "$(user):NUM_IMAGES_DAQ")
 record(bo, "$(user):ENABLE_DAQ")
 {
     field(DESC, "Enable/Disable DAQ")
-    field(SCAN, "0.1 second")
+#    field(SCAN, "0.1 second")
     field(ZNAM, "Disabled")
     field(ONAM, "Enabled")
     field(FLNK, "$(user):ENABLE_DAQ_CALCOUT")
@@ -62,7 +62,7 @@ record(bo, "$(user):TRIGGER_DAQ")
     field(ONAM, "Enabled")
     field(EVNT, "214")
     field(FLNK, "$(user):TRIGGER_DAQ_CALCOUT")
-    field(PRIO, "High")
+#    field(PRIO, "High")
 }
 
 record(calcout, "$(user):TRIGGER_DAQ_CALCOUT") {
@@ -70,7 +70,7 @@ record(calcout, "$(user):TRIGGER_DAQ_CALCOUT") {
     field(INPA, "$(user):STATUS_DAQ")
     field(CALC, "A")
     field(OOPT, "Transition To Non-zero")
-    field(PRIO, "High")
+#    field(PRIO, "High")
 }
 
 record(calc, "$(user):TRIGGER_DAQ_CNT") {
@@ -100,6 +100,42 @@ record(longin, "$(user):STATUS_DAQ")
 #  field(SCAN, "0.1 second")
 }
 
+record(longin, "$(user):READ_MAX")
+{
+  field(DESC, "Max read img time")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):ReadMax")
+  field(EGU,  "usec")
+  field(SCAN, "1 second")
+}
+
+record(longin, "$(user):READ_MIN")
+{
+  field(DESC, "Min read img time")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):ReadMin")
+  field(EGU,  "usec")
+  field(SCAN, "1 second")
+}
+
+record(ai, "$(user):SAVE_MAX")
+{
+  field(DESC, "Max save files time")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):SaveMax")
+  field(EGU,  "seconds")
+  field(SCAN, "1 second")
+}
+
+record(ai, "$(user):SAVE_MIN")
+{
+  field(DESC, "Min save files time")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):SaveMin")
+  field(EGU,  "seconds")
+  field(SCAN, "1 second")
+}
+
 record(stringout, "$(user):SAVE_IMG_DIR")
 {
   field(DESC, "saveImageDir")
@@ -107,6 +143,15 @@ record(stringout, "$(user):SAVE_IMG_DIR")
   field(PINI, "YES")
   field(OUT,  "@$(CAMERA):SaveImageDir")
   info(autosaveFields, "VAL")
+}
+
+record(longout, "$(user):IMAGE_TS_EVENT") {
+  field(DESC, "Event for Timestamping")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(OUT,  "@$(CAMERA):ImageTimestampEvent")
+  field(VAL, 213)
+  field(PINI, "YES")
+  field(EGU,  "event")
 }
 
 record(longin, "$(user):N_OF_COL") {

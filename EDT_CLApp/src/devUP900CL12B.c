@@ -160,6 +160,11 @@ typedef struct UP900CL12B_CAMERA
     int                 numImagesDAQ; /* Number of images to be saved to disk (max is NUM_OF_FRAMES) */
     int                 statusDAQ; /* Current DAQ status */
     IOSCANPVT           ioscanpvt;
+  uint32_t            readTimeMax; /** Max time taken to read image from camera */
+  uint32_t            readTimeMin; /** Min time taken to read image from camera */
+  float            saveTimeMax; /** Max time taken to save images to files */
+  float            saveTimeMin; /** Min time taken to save images to files */
+  unsigned int     imageTimestampEvent; /** Event whose timestamp is used to tag the images */
 } UP900CL12B_CAMERA;
 
 static int image12b_noise_reduce(unsigned char * image, int image_size, float threshold_ratio);
@@ -340,6 +345,10 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
     int oldSaveImage = 0;
     unsigned short int *pNewFrame;
     IMAGE_BUF * pImageBuf;
+    uint64_t beginTime;
+    uint64_t endTime;
+    uint32_t readTime;
+    int saveFiles = 0;
 
     if(pCamera == NULL)
     {
@@ -351,6 +360,8 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
     {
         /* waiting for new frame */
         pNewFrame = (unsigned short int *)pdv_wait_image(pCamera->pCameraHandle);
+	saveFiles = 0;
+	beginTime = cg64();
 
         /* Got a new frame */
         pCamera->frameCounts++;
@@ -366,26 +377,27 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
         if(saveImage || oldSaveImage)
         {/* New frame goes into history buffer */
             pImageBuf = pCamera->historyBuf + pCamera->historyBufIndex;
-/* 	    printf("Buffer index=%d (saveImage=%d oldSaveImage=%d\n", */
-/* 		   pCamera->historyBufIndex, saveImage, oldSaveImage); */
         }
         else
         {/* New frame goes into ping-pong buffer */
             pImageBuf = pCamera->pingpongBuf + pCamera->pingpongFlag;
         }
 
-/* 	epicsMutexUnlock(pCamera->historyBufMutexLock); */
-
         /* Set time stamp even data is not usable */
-	epicsTimeGetEvent(&(pImageBuf->timeStamp), IMAGE_TS_EVT_NUM);
-/* 	if (saveImage || oldSaveImage) { */
-/* 	  printf("TS %d %d index=%d\n", */
-/* 		 pImageBuf->timeStamp.secPastEpoch, */
-/* 		 pImageBuf->timeStamp.nsec, */
-/* 		 pCamera->historyBufIndex); */
-/* 	} */
+/* 	epicsTimeGetEvent(&(pImageBuf->timeStamp), IMAGE_TS_EVT_NUM); */
+	epicsTimeGetEvent(&(pImageBuf->timeStamp), pCamera->imageTimestampEvent);
 
         memcpy((void*)(pImageBuf->pImage), (void*)pNewFrame, pCamera->imageSize);
+
+	endTime = cg64();
+	readTime = (uint32_t)(endTime - beginTime);
+	beginTime = endTime;
+	if (readTime > pCamera->readTimeMax) {
+	  pCamera->readTimeMax = readTime;
+	}
+	if (readTime < pCamera->readTimeMin) {
+	  pCamera->readTimeMin = readTime;
+	}
 
         if(UP900_SHIFT_4BITS > 0)
         {
@@ -396,17 +408,11 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 
 	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) 
         {/* New frame goes into history buffer */
-/*             epicsMutexLock(pCamera->historyBufMutexLock); */
-/* 	    if (pCamera->historyBufIndex == 0) { */
-/* 	      printf("First timestamp (%d %d)\n", */
-/* 		     pCamera->historyBuf[0].timeStamp.secPastEpoch, */
-/* 		     pCamera->historyBuf[0].timeStamp.nsec); */
-/* 	    } */
-	
             pCamera->historyBufIndex++;
 	    
             if(pCamera->historyBufIndex >= pCamera->numImagesDAQ)
             {
+	      saveFiles = 1;
 	      pCamera->historyBufFull = 1;
 	      pCamera->statusDAQ = DAQ_SAVING_IMAGES;
   	      scanIoRequest(pCamera->ioscanpvt);
@@ -415,27 +421,37 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 	      pCamera->historyBufFull = 0; /* "Clear" buffer for next DAQ cycle */
 	      pCamera->triggerDAQ = 0;
 	      pCamera->statusDAQ = DAQ_READY;
-	      /*pCamera->saveImage = 0;*/ /* go back to the ping-pong buffer */
   	      scanIoRequest(pCamera->ioscanpvt);
             }
-/*             epicsMutexUnlock(pCamera->historyBufMutexLock); */
         }
         else if(oldSaveImage)
         {/* New frame goes into history buffer */
-/*             epicsMutexLock(pCamera->historyBufMutexLock); */
             pCamera->historyBufIndex++;
             if(pCamera->historyBufIndex >= NUM_OF_FRAMES)
             {
                 pCamera->historyBufIndex = 0;
                 pCamera->historyBufFull = 1;
             }
-/*             epicsMutexUnlock(pCamera->historyBufMutexLock); */
         }
 	else
         {/* New frame goes into ping-pong buffer */
             pCamera->pingpongFlag = 1 - pCamera->pingpongFlag;
         }
 	epicsMutexUnlock(pCamera->historyBufMutexLock);
+
+	endTime = cg64();
+	readTime = (uint32_t)(endTime - beginTime);
+	if (saveFiles) {
+	  float saveTime = readTime / 1000000;
+	  if (saveTime > pCamera->saveTimeMax) {
+	    pCamera->saveTimeMax = saveTime;
+	  }
+	  if (saveTime < pCamera->saveTimeMin) {
+	    pCamera->saveTimeMin = saveTime;
+	  }
+	}
+	else {
+	}
     }
     return 0;
 }
@@ -548,6 +564,13 @@ int UP900CL12B_Init(char * name, int unit, int channel)
     pCamera->mutexLock = epicsMutexMustCreate();
 
     pCamera->statusDAQ = DAQ_READY;
+
+    pCamera->readTimeMax = 0;
+    pCamera->readTimeMin = 0xFFFFFFF;
+
+    pCamera->saveTimeMax = 0;
+    pCamera->saveTimeMin = 60 * 60;
+
     scanIoInit(&(pCamera->ioscanpvt));
 
     /* We successfully allocate all resource */
@@ -649,6 +672,11 @@ typedef enum {
     UP900CL12B_BO_TriggerDAQ,
     UP900CL12B_LO_NumImagesDAQ,
     UP900CL12B_LI_StatusDAQ,
+    UP900CL12B_LI_ReadMax,
+    UP900CL12B_LI_ReadMin,
+    UP900CL12B_AI_SaveMax,
+    UP900CL12B_AI_SaveMin,
+    UP900CL12B_LO_ImageTimestampEvent,
 } E_UP900CL12B_FUNC;
 
 static struct PARAM_MAP
@@ -688,7 +716,12 @@ static struct PARAM_MAP
     {"SaveImageDir",    EPICS_RTYPE_SO, UP900CL12B_SO_SaveImageDir},
     {"TriggerDAQ",      EPICS_RTYPE_BO, UP900CL12B_BO_TriggerDAQ},
     {"NumImagesDAQ",    EPICS_RTYPE_LO, UP900CL12B_LO_NumImagesDAQ},
-    {"StatusDAQ",    EPICS_RTYPE_LI, UP900CL12B_LI_StatusDAQ}
+    {"StatusDAQ",       EPICS_RTYPE_LI, UP900CL12B_LI_StatusDAQ},
+    {"ReadMax",         EPICS_RTYPE_LI, UP900CL12B_LI_ReadMax},
+    {"ReadMin",         EPICS_RTYPE_LI, UP900CL12B_LI_ReadMin},
+    {"SaveMax",         EPICS_RTYPE_AI, UP900CL12B_AI_SaveMax},
+    {"SaveMin",         EPICS_RTYPE_AI, UP900CL12B_AI_SaveMin},
+    {"ImageTimestampEvent", EPICS_RTYPE_LO, UP900CL12B_LO_ImageTimestampEvent}
 };
 #define N_PARAM_MAP (sizeof(param_map)/sizeof(struct PARAM_MAP))
 
@@ -807,6 +840,14 @@ static long read_ai(struct aiRecord * pai)
     case UP900CL12B_AI_HisCtrdX:
     case UP900CL12B_AI_HisCtrdY:
         /* Calculate projiection, FWHM, centroid ... */
+      return -1;
+    case UP900CL12B_AI_SaveMax:
+      pai->val = pCamera->saveTimeMax;
+      break;
+    case UP900CL12B_AI_SaveMin:
+      pai->val = pCamera->saveTimeMin;
+      break;
+
     default:
         return -1;
     }
@@ -1000,6 +1041,12 @@ static long read_li(struct longinRecord * pli)
     case UP900CL12B_LI_StatusDAQ:
       pli->val = pCamera->statusDAQ;
       break;
+    case UP900CL12B_LI_ReadMax:
+      pli->val = pCamera->readTimeMax;
+      break;
+    case UP900CL12B_LI_ReadMin:
+      pli->val = pCamera->readTimeMin;
+      break;
     default:
         return -1;
     }
@@ -1149,6 +1196,13 @@ static long write_lo(struct longoutRecord * plo)
         plo->val = pCamera->numImagesDAQ;
 	printf("Number of images %d\n", plo->val);
         break;
+    case UP900CL12B_LO_ImageTimestampEvent:
+      epicsMutexLock(pCamera->historyBufMutexLock);
+      pCamera->imageTimestampEvent = plo->val;
+      epicsMutexUnlock(pCamera->historyBufMutexLock);
+      plo->udf = FALSE;
+      plo->stat = plo->sevr = NO_ALARM;
+      break;
     default:
         return -1;
     }
