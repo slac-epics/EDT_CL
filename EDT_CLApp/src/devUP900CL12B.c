@@ -201,7 +201,7 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
 
   time(&now);
   timeinfo = localtime(&now);
-/*   strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo); */
+  strftime(timestr, 30, "%m-%d-%H-%M-%S", timeinfo);
 /*   printf("[%s] Saving collected images to disk (%s).\n", timestr, pCamera->saveImageDir); */
 
   int images = pCamera->historyBufIndex;
@@ -228,12 +228,17 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
 
   /** SINGLE FILE **/
 #ifdef SINGLE_FILE
-  sprintf(file_name, "%s/%s-%d-%d-%d.pgm",
+/*   sprintf(file_name, "%s/%s-%d-%d-%d.pgm", */
+/* 	  pCamera->saveImageDir, */
+/* 	  pCamera->pCameraName, */
+/* 	  pCamera->historyBuf[0].timeStamp.secPastEpoch, */
+/* 	  pCamera->historyBuf[0].timeStamp.nsec, */
+/* 	  PULSEID(pCamera->historyBuf[image_index].timeStamp)); */
+
+  sprintf(file_name, "%s/%s-%s-%d.images",
 	  pCamera->saveImageDir,
 	  pCamera->pCameraName,
-	  pCamera->historyBuf[0].timeStamp.secPastEpoch,
-	  pCamera->historyBuf[0].timeStamp.nsec,
-	  PULSEID(pCamera->historyBuf[image_index].timeStamp));
+	  timestr, PULSEID(pCamera->historyBuf[image_index].timeStamp));
   
   image_file = fopen(file_name, "w");
   if (image_file == NULL) {
@@ -241,16 +246,14 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
     return -1;
   }
 
-  FILE *pulseid_file;
-  sprintf(file_name, "%s/%s-%d-%d-%d.txt",
+  FILE *header_file;
+  sprintf(file_name, "%s/%s-%s-%d.header",
 	  pCamera->saveImageDir,
 	  pCamera->pCameraName,
-	  pCamera->historyBuf[0].timeStamp.secPastEpoch,
-	  pCamera->historyBuf[0].timeStamp.nsec,
-	  PULSEID(pCamera->historyBuf[image_index].timeStamp));
+	  timestr, PULSEID(pCamera->historyBuf[image_index].timeStamp));
   
-  pulseid_file = fopen(file_name, "w");
-  if (pulseid_file == NULL) {
+  header_file = fopen(file_name, "w");
+  if (header_file == NULL) {
     printf("Error opening file %s\n", file_name);
     return -1;
   }
@@ -292,19 +295,35 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
     timeinfo = localtime(&now);
     strftime(timestr, 30, "%m/%d %H:%M:%S", timeinfo);
 
+#ifdef SINGLE_FILE
+    fprintf(header_file, "P5\n");
+    fprintf(header_file, "# Camera: %s\n", pCamera->pCameraName);
+    fprintf(header_file, "# Date: %s\n", timestr );
+    fprintf(header_file, "# EVR timestamp: %d sec %d nsec\n",
+	    pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
+	    pCamera->historyBuf[image_index].timeStamp.nsec);
+    fprintf(header_file, "# PULSEID: %d\n",
+	    PULSEID(pCamera->historyBuf[image_index].timeStamp));
+    fprintf(header_file, "# Sequence #%d\n", image_index);
+    fprintf(header_file, "%d %d\n", pCamera->numOfCol, pCamera->numOfRow);
+    fprintf(header_file, "65535\n");
+#else
     fprintf(image_file, "P5\n");
     fprintf(image_file, "# Camera: %s\n", pCamera->pCameraName);
     fprintf(image_file, "# Date: %s\n", timestr );
     fprintf(image_file, "# EVR timestamp: %d sec %d nsec\n",
 	    pCamera->historyBuf[image_index].timeStamp.secPastEpoch,
 	    pCamera->historyBuf[image_index].timeStamp.nsec);
+    fprintf(header_file, "# PULSEID: %d\n",
+	    PULSEID(pCamera->historyBuf[image_index].timeStamp));
     fprintf(image_file, "# Sequence #%d\n", image_index);
     fprintf(image_file, "%d %d\n", pCamera->numOfCol, pCamera->numOfRow);
     fprintf(image_file, "65535\n");
+#endif
 
-#ifdef SINGLE_FILE
-    fprintf(pulseid_file, "%d\n", PULSEID(pCamera->historyBuf[image_index].timeStamp));
-#endif 
+/* #ifdef SINGLE_FILE */
+/*     fprintf(header_file, "%d\n", PULSEID(pCamera->historyBuf[image_index].timeStamp)); */
+/* #endif  */
     
     size = fwrite(pCamera->historyBuf[image_index].pImage, image_size, 1, image_file);
 
@@ -314,7 +333,7 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
   }
 #ifdef SINGLE_FILE
   fclose(image_file);
-  fclose(pulseid_file);
+  fclose(header_file);
 #endif
   td = cg64() - td;
   rval = (uint32_t)td;
