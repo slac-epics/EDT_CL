@@ -14,6 +14,7 @@
 #include <edtinc.h>
 #include <libpdv.h>
 #include <alarm.h>
+#include <errno.h>
 #include <dbCommon.h>
 #include <dbDefs.h>
 #include <recSup.h>
@@ -79,8 +80,8 @@ int UP900CL12B_DEV_DEBUG = 1;
 #ifdef vxWorks
 #define CAMERA_THREAD_PRIORITY	(10)
 #else
-/*#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityMedium)*/
-#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityHigh)
+#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityMedium)
+/* #define CAMERA_THREAD_PRIORITY (epicsThreadPriorityHigh) */
 #endif
 #define CAMERA_THREAD_STACK	(0x20000)
 
@@ -156,6 +157,7 @@ typedef struct UP900CL12B_CAMERA
 
     epicsMutexId	mutexLock;	/*  general mutex semaphore */
     char                saveImageDir[100];
+    char                imageName[100];
     int                 triggerDAQ; /* Set by the TRIGGER_DAQ PV when starting acquisition for saving to disk */
     int                 numImagesDAQ; /* Number of images to be saved to disk (max is NUM_OF_FRAMES) */
     int                 statusDAQ; /* Current DAQ status */
@@ -201,7 +203,7 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
 
   time(&now);
   timeinfo = localtime(&now);
-  strftime(timestr, 30, "%m-%d-%H-%M-%S", timeinfo);
+  strftime(timestr, 30, "%m-%d-%Y-%H-%M-%S", timeinfo);
 /*   printf("[%s] Saving collected images to disk (%s).\n", timestr, pCamera->saveImageDir); */
 
   int images = pCamera->historyBufIndex;
@@ -235,22 +237,22 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
 /* 	  pCamera->historyBuf[0].timeStamp.nsec, */
 /* 	  PULSEID(pCamera->historyBuf[image_index].timeStamp)); */
 
-  sprintf(file_name, "%s/%s-%s-%d.images",
+  sprintf(file_name, "%s/%s-%s.images",
 	  pCamera->saveImageDir,
-	  pCamera->pCameraName,
-	  timestr, PULSEID(pCamera->historyBuf[image_index].timeStamp));
+	  pCamera->imageName,
+	  timestr);
   
   image_file = fopen(file_name, "w");
   if (image_file == NULL) {
-    printf("Error opening file %s\n", file_name);
+    printf("Error opening file %s (errno=%d)\n", file_name, errno);
     return -1;
   }
 
   FILE *header_file;
-  sprintf(file_name, "%s/%s-%s-%d.header",
+  sprintf(file_name, "%s/%s-%s.header",
 	  pCamera->saveImageDir,
-	  pCamera->pCameraName,
-	  timestr, PULSEID(pCamera->historyBuf[image_index].timeStamp));
+	  pCamera->imageName,
+	  timestr);
   
   header_file = fopen(file_name, "w");
   if (header_file == NULL) {
@@ -306,7 +308,7 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
 	    PULSEID(pCamera->historyBuf[image_index].timeStamp));
     fprintf(header_file, "# Sequence #%d\n", image_index);
     fprintf(header_file, "%d %d\n", pCamera->numOfCol, pCamera->numOfRow);
-    fprintf(header_file, "65535\n");
+    fprintf(header_file, "4096\n");
 #else
     fprintf(image_file, "P5\n");
     fprintf(image_file, "# Camera: %s\n", pCamera->pCameraName);
@@ -318,7 +320,7 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
 	    PULSEID(pCamera->historyBuf[image_index].timeStamp));
     fprintf(image_file, "# Sequence #%d\n", image_index);
     fprintf(image_file, "%d %d\n", pCamera->numOfCol, pCamera->numOfRow);
-    fprintf(image_file, "65535\n");
+    fprintf(image_file, "4096\n");
 #endif
 
 /* #ifdef SINGLE_FILE */
@@ -688,6 +690,7 @@ typedef enum {
     UP900CL12B_WF_HisProjX,
     UP900CL12B_WF_HisProjY,
     UP900CL12B_SO_SaveImageDir,
+    UP900CL12B_SO_ImageName,
     UP900CL12B_BO_TriggerDAQ,
     UP900CL12B_LO_NumImagesDAQ,
     UP900CL12B_LI_StatusDAQ,
@@ -733,6 +736,7 @@ static struct PARAM_MAP
     {"HisProjX",	EPICS_RTYPE_WF,	UP900CL12B_WF_HisProjX},
     {"HisProjY",	EPICS_RTYPE_WF,	UP900CL12B_WF_HisProjY},
     {"SaveImageDir",    EPICS_RTYPE_SO, UP900CL12B_SO_SaveImageDir},
+    {"ImageName",       EPICS_RTYPE_SO, UP900CL12B_SO_ImageName},
     {"TriggerDAQ",      EPICS_RTYPE_BO, UP900CL12B_BO_TriggerDAQ},
     {"NumImagesDAQ",    EPICS_RTYPE_LO, UP900CL12B_LO_NumImagesDAQ},
     {"StatusDAQ",       EPICS_RTYPE_LI, UP900CL12B_LI_StatusDAQ},
@@ -1495,6 +1499,11 @@ static long init_so(struct stringoutRecord *pso)
       pso->udf = FALSE;
       pso->stat = pso->sevr = NO_ALARM;
       break;
+    case UP900CL12B_SO_ImageName:
+      strcpy(pso->val, pCamera->pCameraName);
+      pso->udf = FALSE;
+      pso->stat = pso->sevr = NO_ALARM;
+      break;
     default:
         break;
     }
@@ -1519,20 +1528,18 @@ static long write_so(struct stringoutRecord *pso)
     {
     case UP900CL12B_SO_SaveImageDir:
       strncpy(pCamera->saveImageDir, pso->val, 40);
-      if(strncmp("FTP:", pCamera->saveImageDir, 4) == 0) {
-	sprintf(pCamera->saveImageDir, "/FTP/anonymous:pass/@172.27.72.30%s",&(pso->val[4]));
+      if(strncmp("FTP1:", pCamera->saveImageDir, 5) == 0) {
+	sprintf(pCamera->saveImageDir, "/FTP/anonymous:pass/@172.27.72.30%s",&(pso->val[5]));
       }
-/*       printf("Saving files to \"%s\"\n", pCamera->saveImageDir); */
-      /*
-      if (stat(pCamera->saveImageDir, &stat_buf) != 0) {
-	printf("ERROR: failed to stat() on %s\n", pCamera->saveImageDir);
-	return -1;
+      if(strncmp("FTP2:", pCamera->saveImageDir, 5) == 0) {
+	sprintf(pCamera->saveImageDir, "/FTP/anonymous:pass/@172.27.72.31%s",&(pso->val[5]));
       }
-      if (!S_ISDIR(stat_buf.st_mode)) {
-	printf("ERROR: %s is not a valid directory\n", pCamera->saveImageDir);
-	return -1;
+      if(strncmp("FTP3:", pCamera->saveImageDir, 5) == 0) {
+	sprintf(pCamera->saveImageDir, "/FTP/anonymous:pass/@172.27.72.32%s",&(pso->val[5]));
       }
-      */
+      break;
+    case UP900CL12B_SO_ImageName:
+      strncpy(pCamera->imageName, pso->val, 40);
       break;
     default:
       return -1;

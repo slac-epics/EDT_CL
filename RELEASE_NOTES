@@ -20,6 +20,11 @@
 #==============================================================
 #
 #
+EDT_CL-R2-3-1:	    Addition of PV for controlling the name
+	            of the image saved by the IP900CL-12B camera
+	            during a DAQ. Added addresses for 2 more NAS servers.
+		    TODO: make addresses configurable (PVs)
+
 EDT_CL-R2-3-0:      Major changes to the IP900CL-12B camera support
 		    Added option start data acquisition of images
 	            and save them to a given directory when

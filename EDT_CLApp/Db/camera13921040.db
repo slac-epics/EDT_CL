@@ -145,6 +145,15 @@ record(stringout, "$(user):SAVE_IMG_DIR")
   info(autosaveFields, "VAL")
 }
 
+record(stringout, "$(user):IMAGE_NAME")
+{
+  field(DESC, "imageName")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(PINI, "YES")
+  field(OUT,  "@$(CAMERA):ImageName")
+  info(autosaveFields, "VAL")
+}
+
 record(longout, "$(user):IMAGE_TS_EVENT") {
   field(DESC, "Event for Timestamping")
   field(DTYP, "EDTCL_UP900_12B")
