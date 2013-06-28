@@ -80,8 +80,8 @@ int UP900CL12B_DEV_DEBUG = 1;
 #ifdef vxWorks
 #define CAMERA_THREAD_PRIORITY	(10)
 #else
-#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityMedium)
-/* #define CAMERA_THREAD_PRIORITY (epicsThreadPriorityHigh) */
+/*#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityMedium)*/
+#define CAMERA_THREAD_PRIORITY (epicsThreadPriorityHigh - 1)
 #endif
 #define CAMERA_THREAD_STACK	(0x20000)
 
@@ -89,6 +89,7 @@ int UP900CL12B_DEV_DEBUG = 1;
 typedef struct IMAGE_BUF
 {
     epicsTimeStamp      timeStamp;
+    epicsTimeStamp      triggerTimeStamp;
 
     unsigned short int	*pImage;	/* UP900CL12B is 12-bit camera */
 
@@ -159,6 +160,7 @@ typedef struct UP900CL12B_CAMERA
     char                saveImageDir[100];
     char                imageName[100];
     int                 triggerDAQ; /* Set by the TRIGGER_DAQ PV when starting acquisition for saving to disk */
+
     int                 numImagesDAQ; /* Number of images to be saved to disk (max is NUM_OF_FRAMES) */
     int                 statusDAQ; /* Current DAQ status */
     IOSCANPVT           ioscanpvt;
@@ -167,6 +169,16 @@ typedef struct UP900CL12B_CAMERA
   float            saveTimeMax; /** Max time taken to save images to files */
   float            saveTimeMin; /** Min time taken to save images to files */
   unsigned int     imageTimestampEvent; /** Event whose timestamp is used to tag the images */
+
+  struct timeval imageTS; /* time when image got read out from camera */
+  struct timeval triggerTS; /* time when camera trigger was received */
+  int numTriggersDAQ; /* Number of triggers received during DAQ */
+  epicsUInt32 maxImageDelayUs; /** Max delay (in usec) between the trigger and image readout */
+  epicsUInt32 minImageDelayUs; /** Min delay (in usec) between the trigger and image readout */
+  epicsUInt32 avgImageDelayUs; /** Avg delay (in usec) between the trigger and image readout */
+  int mismatchIdCount; /** Counts if pulse ID between trigger and image readout disagree - which means read out took too long */
+  int numImagesDAQCnt; /** Number of images taken in current DAQ */
+
 } UP900CL12B_CAMERA;
 
 static int image12b_noise_reduce(unsigned char * image, int image_size, float threshold_ratio);
@@ -360,6 +372,21 @@ static int UP900CL12B_FlushBufferToDisk(int num_images, UP900CL12B_CAMERA * pCam
   return 0;
 }
 
+static epicsUInt32 us_since_last_trigger(UP900CL12B_CAMERA *pCamera) {
+  struct timeval now;
+
+  gettimeofday(&now, 0);
+
+  if (now.tv_usec < pCamera->triggerTS.tv_usec) {
+    now.tv_usec += 1000000;
+    now.tv_sec--;
+  }
+  now.tv_usec  = now.tv_usec - pCamera->triggerTS.tv_usec;
+  now.tv_usec += now.tv_sec  - pCamera->triggerTS.tv_sec;
+
+  return (epicsUInt32) now.tv_usec;
+}
+
 static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 {
     int loop, saveImage;
@@ -392,6 +419,7 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 	saveImage = 0;
 	oldSaveImage = pCamera->saveImage;
 	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) {
+	  gettimeofday(&(pCamera->imageTS), 0);
 	  saveImage = 1;
 	}
 
@@ -429,21 +457,45 @@ static int UP900CL12B_Poll(UP900CL12B_CAMERA * pCamera)
 
 	if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) 
         {/* New frame goes into history buffer */
-            pCamera->historyBufIndex++;
-	    
-            if(pCamera->historyBufIndex >= pCamera->numImagesDAQ)
-            {
-	      saveFiles = 1;
-	      pCamera->historyBufFull = 1;
-	      pCamera->statusDAQ = DAQ_SAVING_IMAGES;
-  	      scanIoRequest(pCamera->ioscanpvt);
-	      UP900CL12B_FlushBufferToDisk(pCamera->numImagesDAQ, pCamera);
-	      pCamera->historyBufIndex = 0;
-	      pCamera->historyBufFull = 0; /* "Clear" buffer for next DAQ cycle */
-	      pCamera->triggerDAQ = 0;
-	      pCamera->statusDAQ = DAQ_READY;
-  	      scanIoRequest(pCamera->ioscanpvt);
-            }
+
+	  epicsUInt32 this_time = us_since_last_trigger(pCamera);
+
+	  if (this_time > pCamera->maxImageDelayUs) {
+	    pCamera->maxImageDelayUs = this_time;
+	  }
+	  if (this_time < pCamera->minImageDelayUs) {
+	    pCamera->minImageDelayUs = this_time;
+	  }
+	  
+	  /* Running average: fn+1 = 127/128 * fn + 1/128 * x = fn - 1/128 fn + 1/128 x */
+	  pCamera->avgImageDelayUs += ((int)(- pCamera->avgImageDelayUs + this_time)) >> 8;
+	  /*
+	  printf("max=%d min=%d avg=%d\n",
+		 pCamera->maxImageDelayUs, pCamera->minImageDelayUs, pCamera->avgImageDelayUs);
+	  */
+	  if (PULSEID(pImageBuf->timeStamp) != PULSEID(pImageBuf->triggerTimeStamp)) {
+	    pCamera->mismatchIdCount++;
+	    /*
+	    printf("img %d, trig %d\n", 
+		   PULSEID(pImageBuf->timeStamp),
+		   PULSEID(pImageBuf->triggerTimeStamp));
+	    */
+	  }
+
+	  pCamera->historyBufIndex++;
+	  pCamera->numImagesDAQCnt++;  
+	  if(pCamera->historyBufIndex >= pCamera->numImagesDAQ) {
+	    saveFiles = 1;
+	    pCamera->historyBufFull = 1;
+	    pCamera->statusDAQ = DAQ_SAVING_IMAGES;
+	    scanIoRequest(pCamera->ioscanpvt);
+	    UP900CL12B_FlushBufferToDisk(pCamera->numImagesDAQ, pCamera);
+	    pCamera->historyBufIndex = 0;
+	    pCamera->historyBufFull = 0; /* "Clear" buffer for next DAQ cycle */
+	    pCamera->triggerDAQ = 0;
+	    pCamera->statusDAQ = DAQ_READY;
+	    scanIoRequest(pCamera->ioscanpvt);
+	  }
         }
         else if(oldSaveImage)
         {/* New frame goes into history buffer */
@@ -592,6 +644,13 @@ int UP900CL12B_Init(char * name, int unit, int channel)
     pCamera->saveTimeMax = 0;
     pCamera->saveTimeMin = 60 * 60;
 
+    pCamera->numTriggersDAQ = 0;
+    pCamera->maxImageDelayUs = 0;
+    pCamera->minImageDelayUs = 0xFFFFFF;
+    pCamera->avgImageDelayUs = 0;
+    pCamera->mismatchIdCount = 0;
+    pCamera->numImagesDAQCnt = 0;
+
     scanIoInit(&(pCamera->ioscanpvt));
 
     /* We successfully allocate all resource */
@@ -670,6 +729,7 @@ typedef enum {
     UP900CL12B_AI_HisCtrdX,
     UP900CL12B_AI_HisCtrdY,
     UP900CL12B_BO_SaveImage,
+    UP900CL12B_BO_DAQReadReset,
     UP900CL12B_LI_NumOfCol,
     UP900CL12B_LI_NumOfRow,
     UP900CL12B_LI_NumOfBits,
@@ -692,8 +752,14 @@ typedef enum {
     UP900CL12B_SO_SaveImageDir,
     UP900CL12B_SO_ImageName,
     UP900CL12B_BO_TriggerDAQ,
+    UP900CL12B_BO_TriggerTS,
     UP900CL12B_LO_NumImagesDAQ,
     UP900CL12B_LI_StatusDAQ,
+    UP900CL12B_LI_DAQDupId,
+    UP900CL12B_LI_DAQReadMax,
+    UP900CL12B_LI_DAQReadMin,
+    UP900CL12B_LI_DAQReadAvg,
+    UP900CL12B_LI_DAQImgCnt,
     UP900CL12B_LI_ReadMax,
     UP900CL12B_LI_ReadMin,
     UP900CL12B_AI_SaveMax,
@@ -716,6 +782,7 @@ static struct PARAM_MAP
     {"HisCtrdX",	EPICS_RTYPE_AI,	UP900CL12B_AI_HisCtrdX},
     {"HisCtrdY",	EPICS_RTYPE_AI,	UP900CL12B_AI_HisCtrdY},
     {"SaveImage",	EPICS_RTYPE_BO,	UP900CL12B_BO_SaveImage},
+    {"DAQReadReset",	EPICS_RTYPE_BO,	UP900CL12B_BO_DAQReadReset},
     {"NumOfCol",	EPICS_RTYPE_LI,	UP900CL12B_LI_NumOfCol},
     {"NumOfRow",	EPICS_RTYPE_LI,	UP900CL12B_LI_NumOfRow},
     {"NumOfBits",	EPICS_RTYPE_LI,	UP900CL12B_LI_NumOfBits},
@@ -738,8 +805,14 @@ static struct PARAM_MAP
     {"SaveImageDir",    EPICS_RTYPE_SO, UP900CL12B_SO_SaveImageDir},
     {"ImageName",       EPICS_RTYPE_SO, UP900CL12B_SO_ImageName},
     {"TriggerDAQ",      EPICS_RTYPE_BO, UP900CL12B_BO_TriggerDAQ},
+    {"TriggerTS",       EPICS_RTYPE_BO, UP900CL12B_BO_TriggerTS},
     {"NumImagesDAQ",    EPICS_RTYPE_LO, UP900CL12B_LO_NumImagesDAQ},
     {"StatusDAQ",       EPICS_RTYPE_LI, UP900CL12B_LI_StatusDAQ},
+    {"DAQDupId",         EPICS_RTYPE_LI, UP900CL12B_LI_DAQDupId},
+    {"DAQReadMax",         EPICS_RTYPE_LI, UP900CL12B_LI_DAQReadMax},
+    {"DAQReadMin",         EPICS_RTYPE_LI, UP900CL12B_LI_DAQReadMin},
+    {"DAQReadAvg",         EPICS_RTYPE_LI, UP900CL12B_LI_DAQReadAvg},
+    {"DAQImgCnt",         EPICS_RTYPE_LI, UP900CL12B_LI_DAQImgCnt},
     {"ReadMax",         EPICS_RTYPE_LI, UP900CL12B_LI_ReadMax},
     {"ReadMin",         EPICS_RTYPE_LI, UP900CL12B_LI_ReadMin},
     {"SaveMax",         EPICS_RTYPE_AI, UP900CL12B_AI_SaveMax},
@@ -913,12 +986,23 @@ static long init_bo( struct boRecord * pbo)
         pbo->udf = FALSE;
         pbo->stat = pbo->sevr = NO_ALARM;
         break;
+    case UP900CL12B_BO_DAQReadReset:
+      pbo->rval = 0;
+        pbo->udf = FALSE;
+        pbo->stat = pbo->sevr = NO_ALARM;
+        break;
     case UP900CL12B_BO_TriggerDAQ:
       pCamera->triggerDAQ = 0;
       pbo->rval = pCamera->triggerDAQ;
         pbo->udf = FALSE;
         pbo->stat = pbo->sevr = NO_ALARM;
         break;
+    case UP900CL12B_BO_TriggerTS:
+      gettimeofday(&(pCamera->triggerTS), 0);
+      pbo->rval = 0;
+      pbo->udf = FALSE;
+      pbo->stat = pbo->sevr = NO_ALARM;
+      break;
     default:
         break;
     }
@@ -935,11 +1019,30 @@ static long write_bo(struct boRecord * pbo)
     pdevdata = (UP900CL12B_DEVDATA *)(pbo->dpvt);
     pCamera = pdevdata->pCamera;
 
+    IMAGE_BUF *pImageBuf;
+    pImageBuf = pCamera->historyBuf + pCamera->historyBufIndex;
+
     switch(pdevdata->function)
     {
     case UP900CL12B_BO_SaveImage:
         pCamera->saveImage = pbo->rval;
         break;
+    case UP900CL12B_BO_DAQReadReset:
+        pCamera->maxImageDelayUs = 0;
+        pCamera->minImageDelayUs = 0xFFFFFFF;
+        pCamera->avgImageDelayUs = 0;
+        break;
+    case UP900CL12B_BO_TriggerTS:
+      gettimeofday(&(pCamera->triggerTS), 0);
+      if (pCamera->statusDAQ == DAQ_ACQUIRING_IMAGES) {
+	epicsTimeGetEvent(&(pImageBuf->triggerTimeStamp), pCamera->imageTimestampEvent);
+/* 	printf("buf (%d)\n",  pCamera->historyBufIndex); */
+	pCamera->numTriggersDAQ++;
+      }
+      else {
+	pCamera->numTriggersDAQ = 0;
+      }
+      break;
     case UP900CL12B_BO_TriggerDAQ:
       /** If TRIGGER_DAQ is enabled */
       if (pbo->rval == 1) {
@@ -952,6 +1055,7 @@ static long write_bo(struct boRecord * pbo)
 	  pCamera->historyBufIndex = 0;
 	  pCamera->historyBufFull = 0; /* "Clear" buffer for next DAQ cycle */
 	  pCamera->statusDAQ = DAQ_ACQUIRING_IMAGES;
+	  pCamera->numImagesDAQCnt = 0;
 	  /*pCamera->saveImage = 1; *//* enable saving to the image buffer instead of the ping-pong */
 	  scanIoRequest(pCamera->ioscanpvt);
 /* 	  printf("Got trigger - DAQ Starts now. STATUS=%d\n",pCamera->statusDAQ); */
@@ -968,6 +1072,7 @@ static long write_bo(struct boRecord * pbo)
 	if (pCamera->statusDAQ == DAQ_READY) {
 	  pCamera->triggerDAQ = 0;
 	  pCamera->saveImage = 0;
+	  pCamera->numTriggersDAQ = 0;
 	}
       }
 
@@ -1063,6 +1168,21 @@ static long read_li(struct longinRecord * pli)
         break;
     case UP900CL12B_LI_StatusDAQ:
       pli->val = pCamera->statusDAQ;
+      break;
+    case UP900CL12B_LI_DAQDupId:
+      pli->val = pCamera->maxImageDelayUs;
+      break;
+    case UP900CL12B_LI_DAQReadMax:
+      pli->val = pCamera->maxImageDelayUs;
+      break;
+    case UP900CL12B_LI_DAQReadMin:
+      pli->val = pCamera->minImageDelayUs;
+      break;
+    case UP900CL12B_LI_DAQReadAvg:
+      pli->val = pCamera->avgImageDelayUs;
+      break;
+    case UP900CL12B_LI_DAQImgCnt:
+      pli->val = pCamera->numImagesDAQCnt;
       break;
     case UP900CL12B_LI_ReadMax:
       pli->val = pCamera->readTimeMax;

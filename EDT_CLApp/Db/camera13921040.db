@@ -22,6 +22,14 @@ record(bo, "$(user):SAVE_IMG")
   field(ONAM, "Save")
 }
 
+record(bo, "$(user):DAQ_READ_RESET")
+{
+  field(DESC, "Reset Max/Min/Avg")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(OUT,  "@$(CAMERA):DAQReadReset")
+}
+
+
 record(longout, "$(user):NUM_IMAGES_DAQ")
 {
   field(DESC, "numImagesDAQ")
@@ -39,7 +47,6 @@ record(longout, "$(user):NUM_IMAGES_DAQ")
 record(bo, "$(user):ENABLE_DAQ")
 {
     field(DESC, "Enable/Disable DAQ")
-#    field(SCAN, "0.1 second")
     field(ZNAM, "Disabled")
     field(ONAM, "Enabled")
     field(FLNK, "$(user):ENABLE_DAQ_CALCOUT")
@@ -50,6 +57,18 @@ record(calcout, "$(user):ENABLE_DAQ_CALCOUT") {
     field(INPA, "$(user):ENABLE_DAQ")
     field(CALC, "A")
     field(OOPT, "On Change")
+}
+
+record(bo, "$(user):TRIGGER_TS")
+{
+    field(DESC, "trigger timestamp")
+    field(DTYP, "EDTCL_UP900_12B")
+    field(OUT,  "@$(CAMERA):TriggerTS")
+    field(SCAN, "Event")
+    field(ZNAM, "Disabled")
+    field(ONAM, "Enabled")
+    field(EVNT, "159")
+    field(PRIO, "High")
 }
 
 record(bo, "$(user):TRIGGER_DAQ")
@@ -98,6 +117,51 @@ record(longin, "$(user):STATUS_DAQ")
   field(EGU,  "done")
   field(SCAN, "I/O Intr")
 #  field(SCAN, "0.1 second")
+}
+
+record(longin, "$(user):DAQ_MISMATCH_ID")
+{
+  field(DESC, "Number of mismatch IDs")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):DAQMismatchId")
+  field(EGU,  "usec")
+  field(SCAN, "1 second")
+}
+
+record(longin, "$(user):DAQ_READ_MAX")
+{
+  field(DESC, "DAQ Max read img time")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):DAQReadMax")
+  field(EGU,  "usec")
+  field(SCAN, "1 second")
+}
+
+record(longin, "$(user):DAQ_READ_MIN")
+{
+  field(DESC, "DAQ Min read img time")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):DAQReadMin")
+  field(EGU,  "usec")
+  field(SCAN, "1 second")
+}
+
+record(longin, "$(user):DAQ_READ_AVG")
+{
+  field(DESC, "DAQ Avg read img time")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):DAQReadAvg")
+  field(EGU,  "usec")
+  field(SCAN, "1 second")
+}
+
+record(longin, "$(user):DAQ_IMG_CNT")
+{
+  field(DESC, "Number of imgs taken")
+  field(DTYP, "EDTCL_UP900_12B")
+  field(INP,  "@$(CAMERA):DAQImgCnt")
+  field(EGU,  "usec")
+  field(SCAN, "1 second")
 }
 
 record(longin, "$(user):READ_MAX")
