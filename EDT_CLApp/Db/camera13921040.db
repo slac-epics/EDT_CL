@@ -126,6 +126,8 @@ record(longin, "$(user):DAQ_MISMATCH_ID")
   field(INP,  "@$(CAMERA):DAQMismatchId")
   field(EGU,  "usec")
   field(SCAN, "1 second")
+  field(PINI, "YES")
+  field(VAL, 0)
 }
 
 record(longin, "$(user):DAQ_READ_MAX")
