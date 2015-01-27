@@ -20,6 +20,8 @@
 #==============================================================
 #
 #
+EDT_CL-R2-3-3:	    Added 'field(PINI,"YES")' to PV from camera13921040.db
+
 EDT_CL-R2-3-2:	    Added several PVs to monitor DAQ
 
 EDT_CL-R2-3-1:	    Addition of PV for controlling the name

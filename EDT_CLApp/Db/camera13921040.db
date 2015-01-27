@@ -394,6 +394,7 @@ record(ai, "$(user):X_BM_CTR") {
   field(VAL, "$(X_BM_CTR)")
   field(EGU,  "mm")
   field(PREC, "5")
+  field(PINI, "YES")
 }
 
 record(ai, "$(user):Y_BM_CTR") {
@@ -401,6 +402,7 @@ record(ai, "$(user):Y_BM_CTR") {
   field(VAL, "$(Y_BM_CTR)")
   field(EGU,  "mm")
   field(PREC, "5")
+  field(PINI, "YES")
 }
 
 record(ai, "$(user):X_AM_CTR") {
@@ -408,6 +410,7 @@ record(ai, "$(user):X_AM_CTR") {
   field(VAL, "$(X_AM_CTR)")
   field(EGU,  "mm")
   field(PREC, "5")
+  field(PINI, "YES")
 }
 
 record(ai, "$(user):Y_AM_CTR") {
@@ -415,6 +418,7 @@ record(ai, "$(user):Y_AM_CTR") {
   field(VAL, "$(Y_AM_CTR)")
   field(EGU,  "mm")
   field(PREC, "5")
+  field(PINI, "YES")
 }
 
 record(ai, "$(user):X_RTCL_CTR") {
