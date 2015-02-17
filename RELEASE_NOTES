@@ -20,6 +20,14 @@
 #==============================================================
 #
 #
+EDT_CL-R2-2-2-1:    Added "PINI=YES" to some input records
+		    This version is from the branch EDT_CL-R2-2-2BR
+		    and is to be used by LCLS to fix EVR record
+	            processing problems that have started on EDT_CL-R2-3-0.
+		    The EDT_CL-R2-3-0 (and newer) has changes only needed
+ 		    by FACET (which is phasing out the UNIQ cameras and
+		    moving towards GigE/AreaDetector)
+
 EDT_CL-R2-2-2:      Modified release file to follow eco.
                     needed to define macros for min() and max()
                     as these were removed from EPICS BASE R3-14-11 and
