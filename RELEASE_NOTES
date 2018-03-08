@@ -20,6 +20,9 @@
 #==============================================================
 #
 #
+R2.4.0:             07-Mar-2018 Marcio P. Donadio
+                    - Modified to build for git workflow and EPICS 3.15.
+
 EDT_CL-R2-3-3:	    Added 'field(PINI,"YES")' to PV from camera13921040.db
 
 EDT_CL-R2-3-2:	    Added several PVs to monitor DAQ
