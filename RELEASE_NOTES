@@ -20,6 +20,9 @@
 #==============================================================
 #
 #
+R2.5.0:		    17-Aug-2020 Hugo Slepicka
+		    - Modified to build with EPICS 7.
+
 R2.4.0:             07-Mar-2018 Marcio P. Donadio
                     - Modified to build for git workflow and EPICS 3.15.
 
