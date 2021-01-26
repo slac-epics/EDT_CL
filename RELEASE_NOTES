@@ -20,6 +20,10 @@
 #==============================================================
 #
 #
+R2.5.1              26-Jan-2021 Kukhee Kim
+                    - fix epics version check macro to support epics 7 and higher
+                      (to avoid undefined device entries in epics 7)
+
 R2.5.0:		    17-Aug-2020 Hugo Slepicka
 		    - Modified to build with EPICS 7.
 

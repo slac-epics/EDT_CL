@@ -38,7 +38,7 @@
 #include <waveformRecord.h>
 #include <epicsVersion.h>
 
-#if EPICS_VERSION>=3 && EPICS_REVISION>=14
+#if (EPICS_VERSION>=3 && EPICS_REVISION>=14) || EPICS_VERSION >= 7
 #include <epicsExport.h>
 #endif
 
@@ -481,7 +481,7 @@ UP685CL8B_DEV_SUP_SET devLiEDTCL_UP685_8B=   {6, NULL, NULL, init_li,  NULL, rea
 UP685CL8B_DEV_SUP_SET devLoEDTCL_UP685_8B=   {6, NULL, NULL, init_lo,  NULL, write_lo,  NULL};
 UP685CL8B_DEV_SUP_SET devWfEDTCL_UP685_8B=   {6, NULL, NULL, init_wf,  NULL, read_wf,  NULL};
 
-#if	EPICS_VERSION>=3 && EPICS_REVISION>=14
+#if	(EPICS_VERSION>=3 && EPICS_REVISION>=14) || EPICS_VERSION >= 7
 epicsExportAddress(dset, devAiEDTCL_UP685_8B);
 epicsExportAddress(dset, devAoEDTCL_UP685_8B);
 epicsExportAddress(dset, devBiEDTCL_UP685_8B);

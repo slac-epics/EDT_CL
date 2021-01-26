@@ -40,7 +40,7 @@
 #include <stringoutRecord.h>
 #include <epicsVersion.h>
 
-#if EPICS_VERSION>=3 && EPICS_REVISION>=14
+#if (EPICS_VERSION>=3 && EPICS_REVISION>=14) || EPICS_VERSION >= 7
 #include <epicsExport.h>
 #endif
 
@@ -692,7 +692,7 @@ UP900CL12B_DEV_SUP_SET devLoEDTCL_UP900_12B=   {6, NULL, NULL, init_lo,  NULL, w
 UP900CL12B_DEV_SUP_SET devWfEDTCL_UP900_12B=   {6, NULL, NULL, init_wf,  NULL, read_wf,  NULL};
 UP900CL12B_DEV_SUP_SET devSoEDTCL_UP900_12B=   {6, NULL, NULL, init_so,  NULL, write_so,  NULL};
 
-#if	EPICS_VERSION>=3 && EPICS_REVISION>=14
+#if	(EPICS_VERSION>=3 && EPICS_REVISION>=14) || EPICS_VERSION >=7
 epicsExportAddress(dset, devAiEDTCL_UP900_12B);
 epicsExportAddress(dset, devBoEDTCL_UP900_12B);
 epicsExportAddress(dset, devLiEDTCL_UP900_12B);

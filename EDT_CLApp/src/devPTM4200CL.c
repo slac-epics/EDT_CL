@@ -35,7 +35,7 @@
 #include <waveformRecord.h>
 #include <epicsVersion.h>
 
-#if EPICS_VERSION>=3 && EPICS_REVISION>=14
+#if (EPICS_VERSION>=3 && EPICS_REVISION>=14) || EPICS_VERSION >= 7
 #include <epicsExport.h>
 #endif
 
@@ -344,7 +344,7 @@ PTM4200CL_DEV_SUP_SET devLiEDTCL_PTM4200_12B=   {6, NULL, NULL, init_li,  NULL, 
 PTM4200CL_DEV_SUP_SET devLoEDTCL_PTM4200_12B=   {6, NULL, NULL, init_lo,  NULL, write_lo,  NULL};
 PTM4200CL_DEV_SUP_SET devWfEDTCL_PTM4200_12B=   {6, NULL, NULL, init_wf,  NULL, read_wf,  NULL};
 
-#if	EPICS_VERSION>=3 && EPICS_REVISION>=14
+#if	(EPICS_VERSION>=3 && EPICS_REVISION>=14) || EPICS_VERSION >=7
 epicsExportAddress(dset, devAiEDTCL_PTM4200_12B);
 epicsExportAddress(dset, devBoEDTCL_PTM4200_12B);
 epicsExportAddress(dset, devLiEDTCL_PTM4200_12B);
